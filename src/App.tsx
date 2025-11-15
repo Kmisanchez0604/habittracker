@@ -1,3 +1,4 @@
+import React, { useEffect } from 'react';
 import { Redirect, Route } from 'react-router-dom';
 import {
   IonApp,
@@ -46,42 +47,50 @@ import '@ionic/react/css/palettes/dark.system.css';
 import './theme/variables.css';
 
 setupIonicReact();
+import { initSqlite } from './services/sqlite';
 
-const App: React.FC = () => (
-  <IonApp>
-    <IonReactRouter>
-      <IonTabs>
-        <IonRouterOutlet>
-          <Route exact path="/Home">
-            <Home />
-          </Route>
-          <Route exact path="/Habits">
-            <Habits />
-          </Route>
-          <Route path="/Progress">
-            <Progress />
-          </Route>
-          <Route exact path="/">
-            <Redirect to="/Home" />
-          </Route>
-        </IonRouterOutlet>
-        <IonTabBar slot="bottom">
-          <IonTabButton tab="Home" href="/Home">
-            <IonIcon aria-hidden="true" icon={triangle} />
-            <IonLabel>Home</IonLabel>
-          </IonTabButton>
-          <IonTabButton tab="Habits" href="/Habits">
-            <IonIcon aria-hidden="true" icon={ellipse} />
-            <IonLabel>Habits</IonLabel>
-          </IonTabButton>
-          <IonTabButton tab="Progress" href="/Progress">
-            <IonIcon aria-hidden="true" icon={square} />
-            <IonLabel>Progress</IonLabel>
-          </IonTabButton>
-        </IonTabBar>
-      </IonTabs>
-    </IonReactRouter>
-  </IonApp>
-);
+const App: React.FC = () => {
+  useEffect(() => {
+    // initialize sqlite for native apps (ios/android) on first app start
+    initSqlite().catch((err) => console.warn('SQLite init failed', err));
+  }, []);
+
+  return (
+    <IonApp>
+      <IonReactRouter>
+        <IonTabs>
+          <IonRouterOutlet>
+            <Route exact path="/Home">
+              <Home />
+            </Route>
+            <Route exact path="/Habits">
+              <Habits />
+            </Route>
+            <Route path="/Progress">
+              <Progress />
+            </Route>
+            <Route exact path="/">
+              <Redirect to="/Home" />
+            </Route>
+          </IonRouterOutlet>
+          <IonTabBar slot="bottom">
+            <IonTabButton tab="Home" href="/Home">
+              <IonIcon aria-hidden="true" icon={triangle} />
+              <IonLabel>Home</IonLabel>
+            </IonTabButton>
+            <IonTabButton tab="Habits" href="/Habits">
+              <IonIcon aria-hidden="true" icon={ellipse} />
+              <IonLabel>Habits</IonLabel>
+            </IonTabButton>
+            <IonTabButton tab="Progress" href="/Progress">
+              <IonIcon aria-hidden="true" icon={square} />
+              <IonLabel>Progress</IonLabel>
+            </IonTabButton>
+          </IonTabBar>
+        </IonTabs>
+      </IonReactRouter>
+    </IonApp>
+  );
+};
 
 export default App;
