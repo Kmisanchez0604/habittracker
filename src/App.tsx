@@ -44,43 +44,46 @@ import '@ionic/react/css/palettes/dark.system.css';
 
 /* Theme variables */
 import './theme/variables.css';
+import { HabitsProvider } from './context/HabitsContext';
 
 setupIonicReact();
 
 const App: React.FC = () => (
   <IonApp>
-    <IonReactRouter>
-      <IonTabs>
-        <IonRouterOutlet>
-          <Route exact path="/Home">
-            <Home />
-          </Route>
-          <Route exact path="/Habits">
-            <Habits />
-          </Route>
-          <Route path="/Progress">
-            <Progress />
-          </Route>
-          <Route exact path="/">
-            <Redirect to="/Home" />
-          </Route>
-        </IonRouterOutlet>
-        <IonTabBar slot="bottom">
-          <IonTabButton tab="Home" href="/Home">
-            <IonIcon aria-hidden="true" icon={triangle} />
-            <IonLabel>Home</IonLabel>
-          </IonTabButton>
-          <IonTabButton tab="Habits" href="/Habits">
-            <IonIcon aria-hidden="true" icon={ellipse} />
-            <IonLabel>Habits</IonLabel>
-          </IonTabButton>
-          <IonTabButton tab="Progress" href="/Progress">
-            <IonIcon aria-hidden="true" icon={square} />
-            <IonLabel>Progress</IonLabel>
-          </IonTabButton>
-        </IonTabBar>
-      </IonTabs>
-    </IonReactRouter>
+    <HabitsProvider>
+      <IonReactRouter>
+        <IonTabs>
+          <IonRouterOutlet>
+            <Route exact path="/Home">
+              <Home />
+            </Route>
+            <Route exact path="/Habits">
+              <Habits />
+            </Route>
+            <Route path="/Progress">
+              <Progress />
+            </Route>
+            <Route exact path="/">
+              <Redirect to="/Home" />
+            </Route>
+          </IonRouterOutlet>
+          <IonTabBar slot="bottom">
+            <IonTabButton tab="Home" href="/Home">
+              <IonIcon aria-hidden="true" icon={triangle} />
+              <IonLabel>Home</IonLabel>
+            </IonTabButton>
+            <IonTabButton tab="Habits" href="/Habits">
+              <IonIcon aria-hidden="true" icon={ellipse} />
+              <IonLabel>Habits</IonLabel>
+            </IonTabButton>
+            <IonTabButton tab="Progress" href="/Progress">
+              <IonIcon aria-hidden="true" icon={square} />
+              <IonLabel>Progress</IonLabel>
+            </IonTabButton>
+          </IonTabBar>
+        </IonTabs>
+      </IonReactRouter>
+    </HabitsProvider>
   </IonApp>
 );
 
