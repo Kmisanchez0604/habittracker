@@ -1,11 +1,11 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { sqlApi } from './sqlApi';
+import { habitsApi } from './habitsApi';
 
 export const store = configureStore({
   reducer: {
-    [sqlApi.reducerPath]: sqlApi.reducer
+    [habitsApi.reducerPath]: habitsApi.reducer
   },
-  middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(sqlApi.middleware)
+  middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(habitsApi.middleware)
 });
 
 export type RootState = ReturnType<typeof store.getState>;

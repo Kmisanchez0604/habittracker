@@ -1,5 +1,3 @@
-import React, { useEffect } from 'react';
-import { Redirect, Route } from 'react-router-dom';
 import {
   IonApp,
   IonIcon,
@@ -12,8 +10,10 @@ import {
 } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
 import { ellipse, square, triangle } from 'ionicons/icons';
-import Home from './pages/Home';
+import React, { useEffect } from 'react';
+import { Redirect, Route } from 'react-router-dom';
 import Habits from './pages/Habits';
+import Home from './pages/Home';
 import Progress from './pages/Progress';
 
 /* Core CSS required for Ionic components to work properly */
@@ -25,12 +25,12 @@ import '@ionic/react/css/structure.css';
 import '@ionic/react/css/typography.css';
 
 /* Optional CSS utils that can be commented out */
-import '@ionic/react/css/padding.css';
+import '@ionic/react/css/display.css';
+import '@ionic/react/css/flex-utils.css';
 import '@ionic/react/css/float-elements.css';
+import '@ionic/react/css/padding.css';
 import '@ionic/react/css/text-alignment.css';
 import '@ionic/react/css/text-transformation.css';
-import '@ionic/react/css/flex-utils.css';
-import '@ionic/react/css/display.css';
 
 /**
  * Ionic Dark Mode
@@ -44,15 +44,29 @@ import '@ionic/react/css/display.css';
 import '@ionic/react/css/palettes/dark.system.css';
 
 /* Theme variables */
+import { SplashScreen } from '@capacitor/splash-screen';
+import sqlite from './services/sqlite';
 import './theme/variables.css';
 
 setupIonicReact();
-import { initSqlite } from './services/sqlite';
 
 const App: React.FC = () => {
+
   useEffect(() => {
-    // initialize sqlite for native apps (ios/android) on first app start
-    initSqlite().catch((err) => console.warn('SQLite init failed', err));
+    (async () => {
+      try {
+        await sqlite.init();
+        try {
+          await SplashScreen.hide();
+        } catch (e) {
+          // ignore
+        }
+      } catch (err) {
+        console.warn('SQLite init failed', err);
+        // Per requirement: do not hide the splash until initialization finishes correctly.
+        // This intentionally leaves the native splash visible on native platforms.
+      }
+    })();
   }, []);
 
   return (
