@@ -47,6 +47,7 @@ import '@ionic/react/css/palettes/dark.system.css';
 import { SplashScreen } from '@capacitor/splash-screen';
 import sqlite from './services/sqlite';
 import './theme/variables.css';
+import { HabitsProvider } from './context/HabitsContext';
 
 setupIonicReact();
 

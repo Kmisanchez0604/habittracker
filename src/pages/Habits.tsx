@@ -1,152 +1,419 @@
 import React, { useState } from 'react';
 import {
-  IonPage,
-  IonHeader,
-  IonToolbar,
-  IonTitle,
-  IonContent,
-  IonList,
-  IonItem,
-  IonLabel,
-  IonCheckbox,
-  IonButton,
-  IonModal,
-  IonInput,
-  IonSelect,
-  IonSelectOption,
-  IonFab,
-  IonFabButton,
-  IonIcon,
-  IonButtons
+  IonPage, IonHeader, IonToolbar, IonTitle, IonContent,
+  IonList, IonItem, IonLabel, IonCheckbox, IonButton,
+  IonCard, IonCardContent, IonCardHeader, IonCardTitle,
+  IonInput, IonTextarea, IonSelect, IonSelectOption,
+  IonAlert, IonIcon, IonButtons, IonBadge, IonAccordion,
+  IonAccordionGroup
 } from '@ionic/react';
-import { addOutline } from 'ionicons/icons';
-import IconRenderer from '../components/IconRenderer';
-import {
-  useGetAllHabitsQuery,
-  useGetAllCategoriesQuery,
-  useCreateHabitMutation,
-  useCompleteHabitMutation
-} from '../store/habitsApi';
+import { trash, create, add, calendar, chevronDown } from 'ionicons/icons';
+import { useHabits } from '../context/HabitsContext';
+
+// Función auxiliar para obtener el inicio de la semana
+const getWeekStartDate = (dateString: string): string => {
+  const date = new Date(dateString);
+  const day = date.getDay();
+  const weekStart = new Date(date);
+  weekStart.setDate(date.getDate() - day);
+  return weekStart.toISOString().split('T')[0];
+};
 
 const Habits: React.FC = () => {
-    const { data: habits = [], isLoading: habitsLoading } = useGetAllHabitsQuery();
-    const { data: categories = [], isLoading: categoriesLoading } = useGetAllCategoriesQuery();
-    const [createHabit, { isLoading: creating }] = useCreateHabitMutation();
-    const [completeHabit] = useCompleteHabitMutation();
+  const { habits, updateHabitCompletion, addHabit, updateHabit, deleteHabit } = useHabits();
+  const [editingHabit, setEditingHabit] = useState<any>(null);
+  const [showAlert, setShowAlert] = useState(false);
+  const [habitToDelete, setHabitToDelete] = useState<string | null>(null);
+  
+  // Obtener fecha actual del sistema (hoy) - CORREGIDO
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    const today = new Date();
+    // Asegurarnos de que sea la fecha local, no UTC
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  });
 
-    const [showModal, setShowModal] = useState(false);
-    const [name, setName] = useState('');
-    const [categoryId, setCategoryId] = useState<number | undefined>(undefined);
-    const [time, setTime] = useState<string>('');
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    frequency: 'daily' as 'daily' | 'weekly'
+  });
 
-    console.log({habits});
-
-    const onCreate = async () => {
-      try {
-        await createHabit({ name, categoryId, time }).unwrap();
-        setShowModal(false);
-        setName('');
-        setCategoryId(undefined);
-        setTime('');
-      } catch (err) {
-        console.warn('Create habit error', err);
-      }
-    };
-
-    const onToggleDone = async (id: number, done: number) => {
-      if (done === 1) return; // already done
-      try {
-        await completeHabit({ id }).unwrap();
-      } catch (err) {
-        console.warn('Complete habit error', err);
-      }
-    };
-
-    return (
-      <IonPage>
-        <IonHeader>
-          <IonToolbar>
-            <IonTitle>Mis Hábitos</IonTitle>
-            <IonButtons slot="end" />
-          </IonToolbar>
-        </IonHeader>
-
-        <IonContent>
-          <IonList>
-            {habitsLoading && (
-              <IonItem>
-                <IonLabel>Cargando...</IonLabel>
-              </IonItem>
-            )}
-
-            {!habitsLoading && Array.isArray(habits) && habits.length === 0 && (
-              <div style={{ padding: 24, textAlign: 'center' }}>
-                <div style={{ fontSize: 48, marginBottom: 8 }}>
-                  <IconRenderer name={'FaRegSmile'} size={48} />
-                </div>
-                <div style={{ fontWeight: 600 }}>You have not created habits yet. Start creating one!</div>
-              </div>
-            )}
-
-            {!habitsLoading && habits?.map((habit: any) => {
-              const cat = categories?.find((c: any) => c.id === habit.categoryId) || null;
-              return (
-                <IonItem key={habit.id}>
-                  <IonLabel>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <IconRenderer name={cat ? cat.icon : null} />
-                      <div>
-                        <div>{habit.name}</div>
-                        <div style={{ fontSize: 12, color: '#666' }}>{cat ? cat.name : ''} {habit.time ? `· ${habit.time}` : ''}</div>
-                      </div>
-                    </div>
-                  </IonLabel>
-                  <IonCheckbox checked={Number(habit.isDone) === 1} onIonChange={() => onToggleDone(habit.id, habit.isDone)} />
-                </IonItem>
-              );
-            })}
-          </IonList>
-
-          {/* FAB for creating a new habit (bottom-left) */}
-          <IonFab vertical="bottom" horizontal="start" slot="fixed">
-            <IonFabButton onClick={() => setShowModal(true)}>
-              <IonIcon icon={addOutline} />
-            </IonFabButton>
-          </IonFab>
-
-          <IonModal isOpen={showModal} onDidDismiss={() => setShowModal(false)}>
-            <IonHeader>
-              <IonToolbar>
-                <IonTitle>Crear hábito</IonTitle>
-              </IonToolbar>
-            </IonHeader>
-            <IonContent>
-              <div style={{ padding: 16 }}>
-                <IonLabel>Nombre</IonLabel>
-                <IonInput value={name} onIonChange={(e: any) => setName(e.detail.value)} placeholder="Ej. Leer 20 minutos" disabled={creating} />
-
-                <IonLabel style={{ marginTop: 12 }}>Categoría</IonLabel>
-                <IonSelect value={categoryId} onIonChange={(e: any) => setCategoryId(Number(e.detail.value))} placeholder={categoriesLoading ? 'Cargando categorías...' : 'Selecciona categoría'} disabled={creating || categoriesLoading}>
-                  {categories?.map((c: any) => (
-                    <IonSelectOption key={c.id} value={c.id}>{c.name}</IonSelectOption>
-                  ))}
-                </IonSelect>
-
-                <IonLabel style={{ marginTop: 12 }}>Hora</IonLabel>
-                <IonInput type="time" value={time} onIonChange={(e: any) => setTime(e.detail.value)} disabled={creating} />
-
-                <div style={{ marginTop: 20, display: 'flex', gap: 8 }}>
-                  <IonButton onClick={() => setShowModal(false)} color="medium" disabled={creating}>Cancelar</IonButton>
-                  <IonButton onClick={onCreate} disabled={creating || !name}>
-                    {creating ? 'Creando...' : 'Crear'}
-                  </IonButton>
-                </div>
-              </div>
-            </IonContent>
-          </IonModal>
-        </IonContent>
-      </IonPage>
-    );
+  const handleInputChange = (field: keyof typeof formData, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
-  export default Habits;
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      description: '',
+      frequency: 'daily'
+    });
+    setEditingHabit(null);
+  };
+
+  const handleSave = () => {
+    if (!formData.name.trim()) return;
+
+    if (editingHabit) {
+      updateHabit(editingHabit.id, formData);
+    } else {
+      addHabit(formData);
+    }
+    resetForm();
+  };
+
+  const handleEdit = (habit: any) => {
+    setFormData({
+      name: habit.name,
+      description: habit.description,
+      frequency: habit.frequency
+    });
+    setEditingHabit(habit);
+  };
+
+  const handleDelete = (id: string) => {
+    deleteHabit(id);
+    setShowAlert(false);
+    setHabitToDelete(null);
+    if (editingHabit && editingHabit.id === id) {
+      resetForm();
+    }
+  };
+
+  const confirmDelete = (id: string) => {
+    setHabitToDelete(id);
+    setShowAlert(true);
+  };
+
+  // Verificar si un hábito está completado para una fecha específica
+  const getCompletionForDate = (habit: any, date: string): boolean => {
+    if (habit.frequency === 'daily') {
+      const completion = habit.completions.find((comp: any) => comp.date === date);
+      return completion ? completion.completed : false;
+    } else {
+      const weekStart = getWeekStartDate(date);
+      const weeklyCompletion = habit.completions.find((comp: any) => 
+        getWeekStartDate(comp.date) === weekStart
+      );
+      return weeklyCompletion ? true : false;
+    }
+  };
+
+  // Obtener el número de semanas completadas en el último mes
+  const getWeeklyCompletions = (habit: any): number => {
+    if (habit.frequency === 'daily') {
+      const today = new Date();
+      const weekStart = new Date(today);
+      weekStart.setDate(today.getDate() - today.getDay());
+      
+      let completions = 0;
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(weekStart);
+        date.setDate(weekStart.getDate() + i);
+        const dateString = date.toISOString().split('T')[0];
+        
+        if (getCompletionForDate(habit, dateString)) {
+          completions++;
+        }
+      }
+      return completions;
+    } else {
+      const today = new Date();
+      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+      let completedWeeks = 0;
+      
+      const completedWeekStarts = new Set();
+      habit.completions.forEach((comp: any) => {
+        const weekStart = getWeekStartDate(comp.date);
+        completedWeekStarts.add(weekStart);
+      });
+      
+      return completedWeekStarts.size;
+    }
+  };
+
+  const getFrequencyText = (frequency: 'daily' | 'weekly'): string => {
+    return frequency === 'daily' ? 'Diario' : 'Semanal';
+  };
+
+  const completedToday = habits.filter(habit => getCompletionForDate(habit, selectedDate)).length;
+
+  // Función para formatear la fecha en español - CORREGIDA
+  const formatDate = (dateString: string): string => {
+    const date = new Date(dateString);
+    const today = new Date();
+    
+    // Comparar solo año, mes y día (ignorar hora)
+    const isToday = date.getDate() === today.getDate() && 
+                   date.getMonth() === today.getMonth() && 
+                   date.getFullYear() === today.getFullYear();
+    
+    if (isToday) {
+      return 'Hoy';
+    } else {
+      return date.toLocaleDateString('es-ES', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+    }
+  };
+
+  // Función para obtener la fecha de hoy en formato YYYY-MM-DD - CORREGIDA
+  const getTodayDate = (): string => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  return (
+    <IonPage>
+      <IonHeader>
+        <IonToolbar>
+          <IonTitle>Mis Hábitos</IonTitle>
+        </IonToolbar>
+      </IonHeader>
+
+      <IonContent className="ion-padding">
+        {/* Selector de fecha - AHORA PRIMERO */}
+        <IonCard>
+          <IonCardHeader>
+            <IonCardTitle>
+              <IonIcon icon={calendar} /> Progreso Diario
+            </IonCardTitle>
+          </IonCardHeader>
+          <IonCardContent>
+            <IonItem>
+              <IonLabel position="stacked">Seleccionar Fecha</IonLabel>
+              <IonInput
+                type="date"
+                value={selectedDate}
+                onIonInput={(e) => setSelectedDate(e.detail.value!)}
+              />
+            </IonItem>
+            <p style={{ fontSize: '14px', color: '#666', marginTop: '10px', fontWeight: 'bold' }}>
+              {formatDate(selectedDate)} - Marca los hábitos completados
+            </p>
+            <IonButton 
+              fill="outline" 
+              size="small" 
+              onClick={() => setSelectedDate(getTodayDate())}
+              style={{ marginTop: '10px' }}
+            >
+              <IonIcon icon={calendar} slot="start" />
+              Volver a Hoy
+            </IonButton>
+          </IonCardContent>
+        </IonCard>
+
+        {/* Formulario de creación/edición - ACORDEÓN CON UNA SOLA FLECHA */}
+        <IonAccordionGroup>
+          <IonAccordion value="create-habit">
+            <IonItem slot="header" color="light">
+              <IonIcon icon={add} style={{ marginRight: '8px' }} />
+              <IonLabel>
+                <h2 style={{ fontWeight: 'bold', margin: 0 }}>
+                  {editingHabit ? 'Editar Hábito' : 'Crear Nuevo Hábito'}
+                </h2>
+              </IonLabel>
+              {/* SOLO UNA FLECHA - removemos el icon duplicado */}
+            </IonItem>
+            <div className="ion-padding" slot="content">
+              <IonList>
+                <IonItem>
+                  <IonLabel position="stacked">
+                    Nombre <span style={{ color: 'red' }}>*</span>
+                  </IonLabel>
+                  <IonInput
+                    value={formData.name}
+                    placeholder="Ingresa el nombre del hábito"
+                    onIonInput={(e) => handleInputChange('name', e.detail.value!)}
+                    required
+                  />
+                </IonItem>
+
+                <IonItem>
+                  <IonLabel position="stacked">Descripción</IonLabel>
+                  <IonTextarea
+                    value={formData.description}
+                    placeholder="Descripción opcional del hábito"
+                    onIonInput={(e) => handleInputChange('description', e.detail.value!)}
+                    rows={2}
+                  />
+                </IonItem>
+
+                <IonItem>
+                  <IonLabel position="stacked">Frecuencia</IonLabel>
+                  {/* SELECT COMO BOTONES HORIZONTALES */}
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '10px', width: '100%' }}>
+                    <IonButton 
+                      fill={formData.frequency === 'daily' ? 'solid' : 'outline'}
+                      onClick={() => handleInputChange('frequency', 'daily')}
+                      style={{ flex: 1 }}
+                    >
+                      Diaria
+                    </IonButton>
+                    <IonButton 
+                      fill={formData.frequency === 'weekly' ? 'solid' : 'outline'}
+                      onClick={() => handleInputChange('frequency', 'weekly')}
+                      style={{ flex: 1 }}
+                    >
+                      Semanal
+                    </IonButton>
+                  </div>
+                </IonItem>
+              </IonList>
+
+              <div style={{ marginTop: '20px' }}>
+                <IonButton 
+                  expand="block" 
+                  onClick={handleSave}
+                  disabled={!formData.name.trim()}
+                >
+                  <IonIcon icon={add} slot="start" />
+                  {editingHabit ? 'Actualizar Hábito' : 'Guardar Hábito'}
+                </IonButton>
+
+                {editingHabit && (
+                  <IonButton 
+                    expand="block" 
+                    fill="outline" 
+                    onClick={resetForm}
+                    style={{ marginTop: '10px' }}
+                  >
+                    Cancelar Edición
+                  </IonButton>
+                )}
+              </div>
+            </div>
+          </IonAccordion>
+        </IonAccordionGroup>
+
+        {/* Lista de hábitos con checkboxes */}
+        <IonCard>
+          <IonCardHeader>
+            <IonCardTitle>
+              Mis Hábitos ({habits.length})
+              <IonBadge color="success" style={{ marginLeft: '10px' }}>
+                {completedToday}/{habits.length} completados
+              </IonBadge>
+            </IonCardTitle>
+          </IonCardHeader>
+          <IonCardContent>
+            {habits.length === 0 ? (
+              <p style={{ textAlign: 'center', color: '#666' }}>
+                No hay hábitos registrados. ¡Crea tu primer hábito!
+              </p>
+            ) : (
+              <IonList>
+                {habits.map(habit => {
+                  const isCompleted = getCompletionForDate(habit, selectedDate);
+                  const completionsCount = getWeeklyCompletions(habit);
+                  
+                  return (
+                    <IonItem key={habit.id}>
+                      <IonCheckbox 
+                        checked={isCompleted} 
+                        onIonChange={() => updateHabitCompletion(habit.id, selectedDate)} 
+                        slot="start"
+                      />
+                      <div style={{ flex: 1 }}>
+                        <h3 style={{ 
+                          margin: '0 0 5px 0', 
+                          fontWeight: 'bold',
+                          textDecoration: isCompleted ? 'line-through' : 'none',
+                          color: isCompleted ? '#666' : '#000'
+                        }}>
+                          {habit.name}
+                          {habit.frequency === 'weekly' && isCompleted && (
+                            <IonBadge color="success" style={{ marginLeft: '8px', fontSize: '10px' }}>
+                              Semana Completada
+                            </IonBadge>
+                          )}
+                        </h3>
+                        {habit.description && (
+                          <p style={{ margin: '0 0 5px 0', color: '#666', fontSize: '14px' }}>
+                            {habit.description}
+                          </p>
+                        )}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <p style={{ margin: 0, color: '#3880ff', fontSize: '12px', fontWeight: 'bold' }}>
+                            Frecuencia: {getFrequencyText(habit.frequency)}
+                          </p>
+                          <IonBadge color="primary" style={{ fontSize: '10px' }}>
+                            {habit.frequency === 'daily' 
+                              ? `${completionsCount}/7 días esta semana`
+                              : `${completionsCount} semanas completadas`
+                            }
+                          </IonBadge>
+                        </div>
+                      </div>
+
+                      <IonButtons slot="end">
+                        <IonButton 
+                          fill="clear" 
+                          color="primary"
+                          onClick={() => handleEdit(habit)}
+                        >
+                          <IonIcon icon={create} />
+                        </IonButton>
+                        <IonButton 
+                          fill="clear" 
+                          color="danger"
+                          onClick={() => confirmDelete(habit.id)}
+                        >
+                          <IonIcon icon={trash} />
+                        </IonButton>
+                      </IonButtons>
+                    </IonItem>
+                  );
+                })}
+              </IonList>
+            )}
+          </IonCardContent>
+        </IonCard>
+
+        {/* Alerta de confirmación para eliminar */}
+        <IonAlert
+          isOpen={showAlert}
+          onDidDismiss={() => {
+            setShowAlert(false);
+            setHabitToDelete(null);
+          }}
+          header={'Eliminar Hábito'}
+          message={'¿Estás seguro de que quieres eliminar este hábito? Esta acción no se puede deshacer.'}
+          buttons={[
+            {
+              text: 'Cancelar',
+              role: 'cancel',
+              handler: () => {
+                setShowAlert(false);
+                setHabitToDelete(null);
+              }
+            },
+            {
+              text: 'Eliminar',
+              role: 'destructive',
+              handler: () => {
+                if (habitToDelete) {
+                  handleDelete(habitToDelete);
+                }
+              }
+            }
+          ]}
+        />
+      </IonContent>
+    </IonPage>
+  );
+};
+
+export default Habits;
