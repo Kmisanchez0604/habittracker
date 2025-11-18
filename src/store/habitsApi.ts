@@ -1,0 +1,276 @@
+import sqlite from '../services/sqlite';
+import { createApi } from '@reduxjs/toolkit/query/react';
+import type { BaseQueryFn, QueryReturnValue } from '@reduxjs/toolkit/query';
+import { Habit, HabitCompletion } from '../types/Habits.types';
+import { Category } from '../types/Categories.types';
+
+const dummyBaseQuery = (async (): Promise<any> => ({ data: null })) as BaseQueryFn<unknown, unknown, unknown>;
+
+export const habitsApi = createApi({
+  reducerPath: 'habitsApi',
+  tagTypes: ['Habits', 'Categories'],
+  baseQuery: dummyBaseQuery,
+  endpoints: (builder) => ({
+    getAllCategories: builder.query<Category[], void>({
+        async queryFn(): Promise<QueryReturnValue<Category[], unknown, object | undefined>> {
+          try {
+            const rows: Category[] = await sqlite.querySql('SELECT * FROM Categories ORDER BY id');
+            return { data: rows };
+          } catch (error) {
+            return { error: error as unknown };
+          }
+        },
+      providesTags: ['Categories']
+    }),
+
+    createHabit: builder.mutation<Habit, Omit<Habit, "id" | "completions"> & { createdAt?: string }>(
+      {
+        async queryFn({ name, categoryId, time, description, frequency, createdAt }): Promise<QueryReturnValue<Habit, Omit<Habit, "id" | "completions"> | unknown, object | undefined>> {
+          try {
+            // get category icon if available
+            let icon: string | null = null;
+            if (categoryId) {
+              const cats = await sqlite.querySql('SELECT icon FROM Categories WHERE id = ?', [categoryId]);
+              icon = (cats[0] && cats[0].icon) || null;
+            }
+
+            if (createdAt) {
+              await sqlite.executeSql('INSERT INTO Habits (name, description, frequency, categoryId, time, icon, isDone, createdBy, createdAt) VALUES (?,?,?,?,?,?,?,?,?)', [name, description ?? null, frequency ?? 'daily', categoryId ?? null, time ?? null, icon, 0, 1, createdAt]);
+            } else {
+              await sqlite.executeSql('INSERT INTO Habits (name, description, frequency, categoryId, time, icon, isDone, createdBy) VALUES (?,?,?,?,?,?,?,?)', [name, description ?? null, frequency ?? 'daily', categoryId ?? null, time ?? null, icon, 0, 1]);
+            }
+            const rows : Habit[] = await sqlite.querySql('SELECT * FROM Habits ORDER BY id DESC LIMIT 1');
+            return { data: rows?.[0] ?? null };
+          } catch (error) {
+            return { error: error as unknown };
+          }
+        },
+        invalidatesTags: ['Habits']
+      }
+    ),
+
+    updateHabit: builder.mutation<Habit | null, { id: number; name: string; categoryId?: number; time?: string; description?: string; frequency?: string }>(
+      {
+        async queryFn({ id, name, categoryId, time, description, frequency }): Promise<QueryReturnValue<Habit | null, unknown, object | undefined>> {
+          try {
+            // get icon for category
+            let icon: string | null = null;
+            if (categoryId) {
+              const cats = await sqlite.querySql('SELECT icon FROM Categories WHERE id = ?', [categoryId]);
+              icon = (cats[0] && cats[0].icon) || null;
+            }
+
+            await sqlite.executeSql('UPDATE Habits SET name = ?, description = ?, frequency = ?, categoryId = ?, time = ?, icon = ? WHERE id = ?', [name, description ?? null, frequency ?? 'daily', categoryId ?? null, time ?? null, icon, id]);
+            const rows: Habit[] = await sqlite.querySql('SELECT * FROM Habits WHERE id = ?', [id]);
+            return { data: rows[0] ?? null };
+          } catch (error) {
+            return { error: error as unknown };
+          }
+        },
+        invalidatesTags: ['Habits']
+      }
+    ),
+
+    completeHabit: builder.mutation<Habit | null, { id: number }>(
+      {
+        async queryFn({ id }): Promise<QueryReturnValue<Habit | null, unknown, object | undefined>> {
+          try {
+            await sqlite.executeSql('UPDATE Habits SET isDone = 1 WHERE id = ?', [id]);
+            const rows: Habit[] = await sqlite.querySql('SELECT * FROM Habits WHERE id = ?', [id]);
+            return { data: rows[0] ?? null };
+          } catch (error) {
+            return { error: error as unknown };
+          }
+        },
+        invalidatesTags: ['Habits']
+      }
+    ),
+
+    // optionally pass a date string (YYYY-MM-DD) to filter habits created on that date
+    getAllHabits: builder.query<Habit[], string | void>({
+      async queryFn(createdDate?: string): Promise<QueryReturnValue<Habit[], unknown, object | undefined>> {
+        try {
+          // Get habits (optionally filter by creation date)
+          const where = createdDate ? `WHERE createdAt LIKE '${createdDate}%'` : '';
+          const habits: Habit[] = await sqlite.querySql(`SELECT * FROM Habits ${where} ORDER BY createdAt DESC`);
+
+          // fetch completions for these habits
+          const ids = habits.map(h => h.id).filter(Boolean);
+          let completions: HabitCompletion[] = [];
+          if (ids.length > 0) {
+            const placeholders = ids.map(() => '?').join(',');
+            const rawComps = await sqlite.querySql(`SELECT * FROM HabitCompletions WHERE habitId IN (${placeholders})`, ids as string[]);
+            completions = Array.isArray(rawComps) ? rawComps : []
+          }
+
+          // attach completions to each habit
+          const habitMap: Record<number, HabitCompletion[]> = {};
+          completions.forEach(c => {
+            const hid = Number(c.habitId);
+            habitMap[hid] = habitMap[hid] || [];
+            habitMap[hid].push({
+              habitId: c.habitId,
+              id: String(c.id), 
+              date: c.date, 
+              completed: Number(c.completed) === 1 
+            });
+          });
+
+          const enriched = habits.map(h => ({ ...h, completions: habitMap[Number(h.id)] || [] }));
+          return { data: enriched };
+        } catch (error) {
+          return { error: error as unknown };
+        }
+      },
+      providesTags: ['Habits']
+    }),
+
+    // Habits created today and still pending, ordered by time (null times go last)
+    getTodaysHabits: builder.query<Habit[], void>({
+      async queryFn(): Promise<QueryReturnValue<Habit[], unknown, object | undefined>> {
+        try {
+          const now = new Date();
+          const pad = (n: number) => (n < 10 ? '0' + n : '' + n);
+          const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+
+          // select habits created today and not yet done, order by time (non-null first)
+          const habits: Habit[] = await sqlite.querySql(`SELECT * FROM Habits WHERE createdAt LIKE '${today}%' AND isDone = 0 ORDER BY (time IS NULL), time ASC`);
+
+          // attach completions for these habits
+          const ids = habits.map(h => h.id).filter(Boolean);
+          let completions: HabitCompletion[] = [];
+          if (ids.length > 0) {
+            const placeholders = ids.map(() => '?').join(',');
+            const rawComps = await sqlite.querySql(`SELECT * FROM HabitCompletions WHERE habitId IN (${placeholders})`, ids as string[]);
+            completions = Array.isArray(rawComps) ? rawComps : [];
+          }
+
+          const habitMap: Record<number, HabitCompletion[]> = {};
+          completions.forEach(c => {
+            const hid = Number(c.habitId);
+            habitMap[hid] = habitMap[hid] || [];
+            habitMap[hid].push({
+              habitId: c.habitId,
+              id: String(c.id),
+              date: c.date,
+              completed: Number(c.completed) === 1
+            });
+          });
+
+          const enriched = habits.map(h => ({ ...h, completions: habitMap[Number(h.id)] || [] }));
+          return { data: enriched };
+        } catch (error) {
+          return { error: error as unknown };
+        }
+      },
+      providesTags: ['Habits'],
+    }),
+
+    // Today's summary: total habits created today and how many are completed (based on HabitCompletions for today's date)
+    getTodayProgress: builder.query<{ percentage: number; total: number; completed: number }, void>({
+      async queryFn(): Promise<QueryReturnValue<{ percentage: number; total: number; completed: number }, unknown, object | undefined>> {
+        try {
+          const now = new Date();
+          const pad = (n: number) => (n < 10 ? '0' + n : '' + n);
+          const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+
+          const todaysHabits: Habit[] = await sqlite.querySql(`SELECT * FROM Habits WHERE createdAt LIKE '${today}%'`);
+          const total = todaysHabits.length;
+          let completed = 0;
+          if (total > 0) {
+            const ids = todaysHabits.map(h => h.id).filter(Boolean);
+            const placeholders = ids.map(() => '?').join(',');
+            const rows = await sqlite.querySql(`SELECT DISTINCT habitId FROM HabitCompletions WHERE habitId IN (${placeholders}) AND date = ?`, [...(ids as string[]), today]);
+            // rows may be array of objects with habitId
+            completed = Array.isArray(rows) ? rows.length : 0;
+          }
+          const percentage = total === 0 ? 0 : Math.round((completed / total) * 100);
+          return { data: { percentage, total, completed } };
+        } catch (error) {
+          return { error: error as unknown };
+        }
+      },
+      providesTags: ['Habits']
+    }),
+
+    // delete habit
+    deleteHabit: builder.mutation<void, { id: number }>({
+      async queryFn({ id }): Promise<QueryReturnValue<void, unknown, object | undefined>> {
+        try {
+          await sqlite.executeSql('DELETE FROM HabitCompletions WHERE habitId = ?', [id]);
+          await sqlite.executeSql('DELETE FROM Habits WHERE id = ?', [id]);
+          return { data: undefined };
+        } catch (error) {
+          return { error: error as unknown };
+        }
+      },
+      invalidatesTags: ['Habits']
+    }),
+
+    // add a completion (date string YYYY-MM-DD)
+    addCompletion: builder.mutation<void, { habitId: number; date: string }>({
+      async queryFn({ habitId, date }): Promise<QueryReturnValue<void, unknown, object | undefined>> {
+        try {
+          await sqlite.executeSql('INSERT INTO HabitCompletions (habitId, date, completed) VALUES (?,?,1)', [habitId, date]);
+          return { data: undefined };
+        } catch (error) {
+          return { error: error as unknown };
+        }
+      },
+      invalidatesTags: ['Habits']
+    }),
+
+    // remove a completion
+    removeCompletion: builder.mutation<void, { habitId: number; date: string }>({
+      async queryFn({ habitId, date }): Promise<QueryReturnValue<void, unknown, object | undefined>> {
+        try {
+          await sqlite.executeSql('DELETE FROM HabitCompletions WHERE habitId = ? AND date = ?', [habitId, date]);
+          return { data: undefined };
+        } catch (error) {
+          return { error: error as unknown };
+        }
+      },
+      invalidatesTags: ['Habits']
+    }),
+
+    getProgress: builder.query<{ percentage: number; today: Habit[] }, void>({
+      async queryFn(): Promise<QueryReturnValue<{ percentage: number; today: Habit[] }, unknown, object | undefined>> {
+        try {
+          const all = (await sqlite.querySql('SELECT * FROM Habits')) as Habit[];
+
+          // compute today's date prefix (YYYY-MM-DD)
+          const now = new Date();
+          const pad = (n: number) => (n < 10 ? '0' + n : '' + n);
+          const todayPrefix = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+
+          const today = all.filter((h) => {
+            if (!h.createdAt) return false;
+            return String(h.createdAt).startsWith(todayPrefix);
+          });
+
+          const total = today.length;
+          const done = today.filter((h) => Number(h.isDone) === 1).length;
+          const percentage = total === 0 ? 0 : Math.round((done / total) * 100);
+
+          return { data: { percentage, today } };
+        } catch (error) {
+          return { error: error as unknown };
+        }
+      }
+    })
+  })
+});
+
+export const {
+  useGetAllCategoriesQuery,
+  useCreateHabitMutation,
+  useUpdateHabitMutation,
+  useCompleteHabitMutation,
+  useGetAllHabitsQuery,
+  useGetTodaysHabitsQuery,
+  useGetTodayProgressQuery,
+  useGetProgressQuery,
+  useDeleteHabitMutation,
+  useAddCompletionMutation,
+  useRemoveCompletionMutation,
+} = habitsApi;
