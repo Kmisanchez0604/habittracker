@@ -1,6 +1,6 @@
 import { Capacitor } from '@capacitor/core';
 import { SCHEMA_SQL, DB_NAME } from '../db/schema';
-import { CapacitorSQLite, SQLiteConnection, SQLiteDBConnection } from '@capacitor-community/sqlite';
+import { CapacitorSQLite, DBSQLiteValues, SQLiteConnection, SQLiteDBConnection } from '@capacitor-community/sqlite';
 
 class SqliteService {
     private static _instance: SqliteService | null = null;
@@ -67,6 +67,9 @@ class SqliteService {
             // execute schema creation
             await conn.execute(SCHEMA_SQL);
 
+            // run migrations / ensure columns exist for backwards compatibility
+            await this.migrateSchema();
+
             this.connection = conn;
 
             // ensure default categories
@@ -77,6 +80,48 @@ class SqliteService {
         } catch (err) {
             console.error('initSqlite error', err);
             throw err;
+        }
+    }
+
+    /**
+     * Add missing columns or create tables when schema evolves.
+     * This performs safe ALTER TABLE ADD COLUMN for missing columns.
+     */
+    private async migrateSchema(): Promise<void> {
+        if (!this.connection) return;
+        try {
+            // Ensure Habits table has required columns
+            const pragmaRows = await this.querySql("PRAGMA table_info('Habits')");
+            const existingCols = (Array.isArray(pragmaRows) ? pragmaRows : []).map((r: any) => String(r.name || r.NAME || r.Name));
+
+            const needed: Record<string, string> = {
+                description: "TEXT",
+                frequency: "TEXT DEFAULT 'daily'",
+                icon: "TEXT"
+            };
+
+            for (const [col, def] of Object.entries(needed)) {
+                if (!existingCols.includes(col)) {
+                    try {
+                        await this.executeSql(`ALTER TABLE Habits ADD COLUMN ${col} ${def}`);
+                        console.info(`Added column ${col} to Habits`);
+                    } catch (err) {
+                        console.warn(`Failed to add column ${col} to Habits`, err);
+                    }
+                }
+            }
+
+            // Ensure HabitCompletions table exists (CREATE TABLE IF NOT EXISTS is idempotent)
+            await this.executeSql(`CREATE TABLE IF NOT EXISTS HabitCompletions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  habitId INTEGER NOT NULL,
+  date TEXT NOT NULL,
+  completed INTEGER DEFAULT 1,
+  createdAt TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (habitId) REFERENCES Habits(id)
+);`);
+        } catch (err) {
+            console.warn('migrateSchema error', err);
         }
     }
 
@@ -116,8 +161,11 @@ class SqliteService {
         if (!this.connection) throw new Error('Native DB connection not initialized');
         try {
             // Prefer query API for selects
-            const res = await this.connection.query(statement, values);
-            if (res && res.values && res.values.length) return res.values;
+            const res: DBSQLiteValues | null = await this.connection.query(statement, values && values.length ? values : undefined);
+            if (!res) return [];
+            if (res.values && res.values.length) return res.values;
+
+            return [];
 
         } catch (err) {
             console.error('querySql native error', err, statement, values);

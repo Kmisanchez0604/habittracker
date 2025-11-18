@@ -1,18 +1,17 @@
 // src/context/HabitsContext.tsx (solo la función updateHabitCompletion necesita cambio)
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import {
+  useGetAllHabitsQuery,
+  useCreateHabitMutation,
+  useUpdateHabitMutation,
+  useDeleteHabitMutation,
+  useAddCompletionMutation,
+  useRemoveCompletionMutation,
+  useGetAllCategoriesQuery
+} from '../store/habitsApi';
+import { Habit, HabitCompletion } from '../types/Habits.types';
 
-export interface HabitCompletion {
-  date: string;
-  completed: boolean;
-}
 
-export interface Habit {
-  id: string;
-  name: string;
-  description: string;
-  frequency: 'daily' | 'weekly';
-  completions: HabitCompletion[];
-}
 
 interface HabitsContextType {
   habits: Habit[];
@@ -49,99 +48,90 @@ const getWeekDates = (dateString: string): string[] => {
 };
 
 export const HabitsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const { data: habitsData = [] } = useGetAllHabitsQuery();
+  const { data: categoriesData = [] } = useGetAllCategoriesQuery();
+  const [createHabit] = useCreateHabitMutation();
+  const [updateHabitMutation] = useUpdateHabitMutation();
+  const [deleteHabitMutation] = useDeleteHabitMutation();
+  const [addCompletionMutation] = useAddCompletionMutation();
+  const [removeCompletionMutation] = useRemoveCompletionMutation();
+
   const [habits, setHabits] = useState<Habit[]>([]);
 
-  // Cargar hábitos desde localStorage al montar
+  // Keep local context state synced with RTK Query data
   useEffect(() => {
-    const storedHabits = localStorage.getItem('habits');
-    if (storedHabits) {
-      try {
-        setHabits(JSON.parse(storedHabits));
-      } catch (error) {
-        console.error('Error parsing stored habits:', error);
-        setHabits([]);
-      }
-    }
-  }, []);
-
-  // Guardar hábitos en localStorage cuando cambien
-  useEffect(() => {
-    localStorage.setItem('habits', JSON.stringify(habits));
-  }, [habits]);
+    setHabits(habitsData);
+  }, [habitsData]);
 
   const updateHabitCompletion = (habitId: string, date: string) => {
-    setHabits(prev => prev.map(habit => {
-      if (habit.id === habitId) {
-        if (habit.frequency === 'daily') {
-          // Lógica para hábitos diarios
-          const existingCompletion = habit.completions.find(comp => comp.date === date);
-          
-          if (existingCompletion) {
-            return {
-              ...habit,
-              completions: habit.completions.map(comp =>
-                comp.date === date ? { ...comp, completed: !comp.completed } : comp
-              )
-            };
-          } else {
-            return {
-              ...habit,
-              completions: [...habit.completions, { date, completed: true }]
-            };
-          }
-        } else {
-          // Lógica para hábitos semanales - usar la semana completa como unidad
-          const weekStart = getWeekStartDate(date);
-          const existingWeeklyCompletion = habit.completions.find(comp => 
-            getWeekStartDate(comp.date) === weekStart
-          );
-          
-          if (existingWeeklyCompletion) {
-            // Si ya existe un registro para esta semana, eliminarlo (desmarcar)
-            return {
-              ...habit,
-              completions: habit.completions.filter(comp => 
-                getWeekStartDate(comp.date) !== weekStart
-              )
-            };
-          } else {
-            // Si no existe, agregar la semana como completada
-            const weekDates = getWeekDates(date);
-            const newCompletions = weekDates.map(weekDate => ({
-              date: weekDate,
-              completed: true
-            }));
-            
-            return {
-              ...habit,
-              completions: [...habit.completions, ...newCompletions]
-            };
-          }
-        }
+    // Find the habit in local state
+    const habit = habits.find(h => String(h.id) === String(habitId));
+    if (!habit) return;
+
+    if (habit.frequency === 'daily') {
+      const existing = habit.completions?.find((c: HabitCompletion) => c.date === date);
+      if (existing) {
+        // remove completion
+        removeCompletionMutation({ habitId: Number(habitId), date }).catch(() => {});
+      } else {
+        // add completion
+        addCompletionMutation({ habitId: Number(habitId), date }).catch(() => {});
       }
-      return habit;
-    }));
+    } else {
+      // weekly: toggle the week's completion by adding/removing entries for the week's dates
+      const weekStart = getWeekStartDate(date);
+      const existingWeekly = habit.completions?.find((c: HabitCompletion) => getWeekStartDate(c.date) === weekStart);
+      const weekDates = getWeekDates(date);
+      if (existingWeekly) {
+        // remove all week dates
+        weekDates.forEach(d => removeCompletionMutation({ habitId: Number(habitId), date: d }).catch(() => {}));
+      } else {
+        weekDates.forEach(d => addCompletionMutation({ habitId: Number(habitId), date: d }).catch(() => {}));
+      }
+    }
   };
 
-  const addHabit = (habitData: Omit<Habit, 'id' | 'completions'>) => {
-    const newHabit: Habit = {
-      ...habitData,
-      id: Date.now().toString(),
-      completions: []
-    };
-    setHabits(prev => [...prev, newHabit]);
+  const addHabit = (habitData: Omit<Habit, 'id' | 'completions'> & { createdAt?: string }) => {
+    // Call RTK mutation to persist 
+    (async () => {
+      try {
+          const created = await createHabit({ 
+            name: habitData.name, 
+            categoryId: habitData?.categoryId, 
+            time: habitData?.time, 
+            description: habitData.description, 
+            frequency: habitData.frequency,
+            isDone: habitData.isDone,
+            icon: habitData.icon,
+            createdAt: (habitData as any).createdAt ?? undefined,
+          }).unwrap();
+        if (created) setHabits(prev => [...prev, created as Habit]);
+      } catch (e) {
+        console.warn('create habit failed', e);
+      }
+    })();
   };
 
   const updateHabit = (habitId: string, habitData: Omit<Habit, 'id' | 'completions'>) => {
-    setHabits(prev => prev.map(habit =>
-      habit.id === habitId
-        ? { ...habitData, id: habitId, completions: habit.completions }
-        : habit
-    ));
+    (async () => {
+      try {
+        const updated = await updateHabitMutation({ id: Number(habitId), name: habitData.name, categoryId: habitData.categoryId, time: habitData.time, description: habitData.description, frequency: habitData.frequency } as any).unwrap();
+        if (updated) setHabits(prev => prev.map(h => String(h.id) === String(habitId) ? updated as Habit : h));
+      } catch (e) {
+        console.warn('update habit failed', e);
+      }
+    })();
   };
 
   const deleteHabit = (habitId: string) => {
-    setHabits(prev => prev.filter(habit => habit.id !== habitId));
+    (async () => {
+      try {
+        await deleteHabitMutation({ id: Number(habitId) }).unwrap();
+        setHabits(prev => prev.filter(h => String(h.id) !== String(habitId)));
+      } catch (e) {
+        console.warn('delete habit failed', e);
+      }
+    })();
   };
 
   return (

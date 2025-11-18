@@ -72,6 +72,7 @@ const App: React.FC = () => {
 
   return (
     <IonApp>
+      <HabitsProvider>
       <IonReactRouter>
         <IonTabs>
           <IonRouterOutlet>
@@ -104,6 +105,7 @@ const App: React.FC = () => {
           </IonTabBar>
         </IonTabs>
       </IonReactRouter>
+      </HabitsProvider>
     </IonApp>
   );
 };

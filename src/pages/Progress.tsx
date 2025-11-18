@@ -10,7 +10,7 @@ import {
   Legend,
   Title 
 } from 'chart.js';
-import { useHabits } from '../context/HabitsContext';
+import { useGetAllHabitsQuery } from '../store/habitsApi';
 
 ChartJS.register(
   BarElement, 
@@ -23,7 +23,7 @@ ChartJS.register(
 );
 
 const Progress: React.FC = () => {
-  const { habits } = useHabits();
+  const { data: habits = [] } = useGetAllHabitsQuery();
 
   // Calcular progreso semanal
   const getWeeklyProgressData = () => {
