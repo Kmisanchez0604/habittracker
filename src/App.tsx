@@ -16,15 +16,14 @@ import Habits from './pages/Habits';
 import Home from './pages/Home';
 import Progress from './pages/Progress';
 
-/* Core CSS required for Ionic components to work properly */
 import '@ionic/react/css/core.css';
-
-/* Basic CSS for apps built with Ionic */
 import '@ionic/react/css/normalize.css';
 import '@ionic/react/css/structure.css';
 import '@ionic/react/css/typography.css';
 
 /* Optional CSS utils that can be commented out */
+import '@ionic/react/css/display.css';
+import '@ionic/react/css/flex-utils.css';
 import '@ionic/react/css/display.css';
 import '@ionic/react/css/flex-utils.css';
 import '@ionic/react/css/float-elements.css';
@@ -47,6 +46,7 @@ import '@ionic/react/css/palettes/dark.system.css';
 import { SplashScreen } from '@capacitor/splash-screen';
 import sqlite from './services/sqlite';
 import './theme/variables.css';
+import { HabitsProvider } from './context/HabitsContext';
 import { HabitsProvider } from './context/HabitsContext';
 
 setupIonicReact();
