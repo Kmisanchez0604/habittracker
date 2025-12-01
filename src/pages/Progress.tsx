@@ -11,6 +11,7 @@ import {
   Title 
 } from 'chart.js';
 import { useGetAllHabitsQuery } from '../store/habitsApi';
+import LogoutButton from '../components/LogoutButton';
 
 ChartJS.register(
   BarElement, 
@@ -23,7 +24,8 @@ ChartJS.register(
 );
 
 const Progress: React.FC = () => {
-  const { data: habits = [] } = useGetAllHabitsQuery();
+  const userId = typeof sessionStorage !== 'undefined' ? Number(sessionStorage.getItem('userId')) || undefined : undefined;
+  const { data: habits = [] } = useGetAllHabitsQuery({ userId });
 
   // Calcular progreso semanal
   const getWeeklyProgressData = () => {
@@ -183,6 +185,7 @@ const Progress: React.FC = () => {
       <IonHeader>
         <IonToolbar>
           <IonTitle>Progreso y Estadísticas</IonTitle>
+          <LogoutButton />
         </IonToolbar>
       </IonHeader>
       <IonContent className="ion-padding">
