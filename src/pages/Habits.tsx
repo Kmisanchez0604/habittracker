@@ -25,7 +25,7 @@ import MonthCalendar from '../components/MonthCalendar';
 import { Category } from '../types/Categories.types';
 import { formatDate, getWeekStartDate } from '../helpers/dates';
 
-
+//prueba 
 
 const Habits: React.FC = () => {
   const { updateHabitCompletion, deleteHabit } = useHabits();
