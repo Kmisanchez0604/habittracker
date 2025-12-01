@@ -26,7 +26,7 @@ import { Category } from '../types/Categories.types';
 import { formatDate, getWeekStartDate } from '../helpers/dates';
 import LogoutButton from '../components/LogoutButton';
 
-
+//prueba 
 
 const Habits: React.FC = () => {
   const { updateHabitCompletion, deleteHabit } = useHabits();
