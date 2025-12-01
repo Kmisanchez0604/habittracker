@@ -11,7 +11,7 @@ import {
 import { IonReactRouter } from '@ionic/react-router';
 import { ellipse, square, triangle } from 'ionicons/icons';
 import React, { useEffect } from 'react';
-import { Redirect, Route } from 'react-router-dom';
+import { Redirect, Route, Switch } from 'react-router-dom';
 import Habits from './pages/Habits';
 import Home from './pages/Home';
 import Progress from './pages/Progress';
@@ -45,9 +45,12 @@ import '@ionic/react/css/palettes/dark.system.css';
 /* Theme variables */
 import { SplashScreen } from '@capacitor/splash-screen';
 import sqlite from './services/sqlite';
+import notificationService from './services/notifications';
+import NotificationListener from './components/NotificationListener';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import './theme/variables.css';
 import { HabitsProvider } from './context/HabitsContext';
-import { HabitsProvider } from './context/HabitsContext';
+import Login from './pages/Login';
 
 setupIonicReact();
 
@@ -73,40 +76,94 @@ const App: React.FC = () => {
   return (
     <IonApp>
       <HabitsProvider>
-      <IonReactRouter>
-        <IonTabs>
-          <IonRouterOutlet>
-            <Route exact path="/Home">
-              <Home />
+        <IonReactRouter>
+          <Switch>
+            {/* Public route: Login */}
+            <Route exact path="/Login">
+              <Login />
             </Route>
-            <Route exact path="/Habits">
-              <Habits />
+
+            {/* Private layout (tabs + private routes). The layout requests notification permissions
+                and starts the notification service when mounted. */}
+            <Route path="/">
+              <PrivateLayout />
             </Route>
-            <Route path="/Progress">
-              <Progress />
-            </Route>
-            <Route exact path="/">
-              <Redirect to="/Home" />
-            </Route>
-          </IonRouterOutlet>
-          <IonTabBar slot="bottom">
-            <IonTabButton tab="Home" href="/Home">
-              <IonIcon aria-hidden="true" icon={triangle} />
-              <IonLabel>Home</IonLabel>
-            </IonTabButton>
-            <IonTabButton tab="Habits" href="/Habits">
-              <IonIcon aria-hidden="true" icon={ellipse} />
-              <IonLabel>Habits</IonLabel>
-            </IonTabButton>
-            <IonTabButton tab="Progress" href="/Progress">
-              <IonIcon aria-hidden="true" icon={square} />
-              <IonLabel>Progress</IonLabel>
-            </IonTabButton>
-          </IonTabBar>
-        </IonTabs>
-      </IonReactRouter>
+          </Switch>
+        </IonReactRouter>
       </HabitsProvider>
     </IonApp>
+  );
+};
+
+const PrivateLayout: React.FC = () => {
+  const userId = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('userId') : null;
+  useEffect(() => {
+    (async () => {
+      try {
+        if (sessionStorage.getItem('userId')) {
+          // request notification permissions when entering private area
+          try {
+            await LocalNotifications.requestPermissions();
+          } catch (e) {
+            // ignore
+          }
+
+          // start notification polling service
+          try {
+            notificationService.start({ intervalMs: 60_000, lookaheadMin: 10 });
+          } catch (e) {
+            console.warn('failed to start notificationService', e);
+          }
+        }
+      } catch (err) {
+        console.warn('PrivateLayout init failed', err);
+      }
+    })();
+
+    return () => {
+      try { notificationService.stop(); } catch (e) {}
+    };
+  }, []);
+
+  if (!userId) {
+    return <Redirect to="/Login" />;
+  }
+
+  return (
+    <>
+      <NotificationListener />
+      <IonTabs>
+        <IonRouterOutlet>
+          <Route exact path="/Home">
+            <Home />
+          </Route>
+          <Route exact path="/Habits">
+            <Habits />
+          </Route>
+          <Route path="/Progress">
+            <Progress />
+          </Route>
+          <Route exact path="/">
+            <Redirect to="/Home" />
+          </Route>
+        </IonRouterOutlet>
+
+        <IonTabBar slot="bottom">
+          <IonTabButton tab="Home" href="/Home">
+            <IonIcon aria-hidden="true" icon={triangle} />
+            <IonLabel>Home</IonLabel>
+          </IonTabButton>
+          <IonTabButton tab="Habits" href="/Habits">
+            <IonIcon aria-hidden="true" icon={ellipse} />
+            <IonLabel>Habits</IonLabel>
+          </IonTabButton>
+          <IonTabButton tab="Progress" href="/Progress">
+            <IonIcon aria-hidden="true" icon={square} />
+            <IonLabel>Progress</IonLabel>
+          </IonTabButton>
+        </IonTabBar>
+      </IonTabs>
+    </>
   );
 };
 

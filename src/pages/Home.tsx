@@ -7,6 +7,7 @@ import { Habit } from '../types/Habits.types';
 import HabitFormModal from '../components/HabitFormModal';
 import { useHabits } from '../context/HabitsContext';
 import React, { useState } from 'react';
+import LogoutButton from '../components/LogoutButton';
 
 const CircularProgress: React.FC<{ percentage: number; size?: number }> = ({ percentage, size = 96 }) => {
   const stroke = 8;
@@ -57,8 +58,9 @@ const formatTime = (time?: string | null) => {
 const Home: React.FC = () => {
   const history = useHistory();
 
-  const { data: todaysHabits = [], refetch } = useGetTodaysHabitsQuery(undefined, { refetchOnMountOrArgChange: true, refetchOnFocus: true, refetchOnReconnect: true });
-  const { data: progress = { percentage: 0, total: 0, completed: 0 } } = useGetTodayProgressQuery();
+  const userId = typeof sessionStorage !== 'undefined' ? Number(sessionStorage.getItem('userId')) || undefined : undefined;
+  const { data: todaysHabits = [], refetch } = useGetTodaysHabitsQuery(userId, { refetchOnMountOrArgChange: true, refetchOnFocus: true, refetchOnReconnect: true });
+  const { data: progress = { percentage: 0, total: 0, completed: 0 } } = useGetTodayProgressQuery(userId);
   const { updateHabitCompletion } = useHabits();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [animatingIds, setAnimatingIds] = useState<Record<string, boolean>>({});
@@ -72,6 +74,7 @@ const Home: React.FC = () => {
       <IonHeader>
         <IonToolbar color="primary">
           <IonTitle>HabitTracker</IonTitle>
+          <LogoutButton />
         </IonToolbar>
       </IonHeader>
 
