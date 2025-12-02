@@ -51,24 +51,10 @@ const Register: React.FC = () => {
       return setShowToast({ open: true, msg: 'Las contraseñas no coinciden 😓' });
     }
 
-    try {
-      if (!fullname || !fullname.trim()) {
-        setShowToast({ open: true, msg: 'Ingresa tu nombre completo' });
-        return;
-      }
-      const res = await createUser({ email, password, fullname }).unwrap();
-      if (!res) {
-        setShowToast({ open: true, msg: 'Error creando usuario' });
-        return;
-      }
-      const u = res;
-      sessionStorage.setItem('userId', String(u.id));
-      dispatch(setUser({ id: Number(u.id), email: u.email, fullname: u.fullname ?? null, birthDate: u.birthDate ?? null, weight: u.weight ?? null }));
-      history.push('/app/home');
-    } catch (err) {
-      console.error('register error', err);
-      setShowToast({ open: true, msg: 'Error creando usuario' });
-    }
+    const user = { email, password };
+    localStorage.setItem('user', JSON.stringify(user));
+
+    history.push('/Login');
   };
 
   return (

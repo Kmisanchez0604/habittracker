@@ -11,8 +11,11 @@ import {
   IonToolbar,
   setupIonicReact
 } from '@ionic/react';
-import sqlite from './services/sqlite';
-import './theme/variables.css';
+
+import { IonReactRouter } from '@ionic/react-router';
+import { ellipse, square, triangle } from 'ionicons/icons';
+import React, { useEffect } from 'react';
+import { Redirect, Route, Switch } from 'react-router-dom';
 import Login from './pages/Login';
 import Profile from './pages/Profile';
 import { useEffect } from 'react';
@@ -30,8 +33,32 @@ import { HabitsProvider } from './context/HabitsContext';
 import { IonReactRouter } from '@ionic/react-router';
 import Home from './pages/Home';
 import Welcome from './pages/Welcome';
-import AvatarButton from './components/AvatarButton';
-import LogoutButton from './components/LogoutButton';
+
+import { HabitsProvider } from './context/HabitsContext';  // ✔ CORRECTO
+
+import '@ionic/react/css/core.css';
+import '@ionic/react/css/normalize.css';
+import '@ionic/react/css/structure.css';
+import '@ionic/react/css/typography.css';
+import '@ionic/react/css/display.css';
+import '@ionic/react/css/flex-utils.css';
+import '@ionic/react/css/display.css';
+import '@ionic/react/css/flex-utils.css';
+import '@ionic/react/css/float-elements.css';
+import '@ionic/react/css/padding.css';
+import '@ionic/react/css/text-alignment.css';
+import '@ionic/react/css/text-transformation.css';
+import '@ionic/react/css/palettes/dark.system.css';
+
+/* Theme variables */
+import { SplashScreen } from '@capacitor/splash-screen';
+import sqlite from './services/sqlite';
+import notificationService from './services/notifications';
+import NotificationListener from './components/NotificationListener';
+import { LocalNotifications } from '@capacitor/local-notifications';
+import './theme/variables.css';
+
+
 
 setupIonicReact();
 
@@ -60,72 +87,11 @@ const App: React.FC = () => {
   );
 };
 
-const PublicLayout: React.FC = () => {
-  const dispatch = useAppDispatch();
-  // if there's a session user, load into store and redirect
-  useEffect(() => {
-    (async () => {
-      try {
-        const sid = sessionStorage.getItem('userId');
-        if (sid) {
-          const id = Number(sid);
-          try {
-            const rows: any[] = await sqlite.querySql('SELECT * FROM Users WHERE id = ? LIMIT 1', [id]);
-            if (rows && rows[0]) {
-              const u = rows[0];
-              dispatch(setUser({ id: Number(u.id), email: u.email, fullname: u.fullname ?? null, birthDate: u.birthDate ?? null, weight: u.weight ?? null }));
-            }
-          } catch (e) {
-            console.warn('failed to load user in public layout', e);
-          }
-        }
-      } catch (err) {
-        console.warn(err);
-      }
-    })();
-  }, [dispatch]);
-  const sid = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('userId') : null;
-  if (sid) return <Redirect to="/app/home" />;
-
-  // render routes for welcome/login/register wrapped with a public header and bottom nav
-  return (
-    <>
-      <IonTabs>
-        <IonRouterOutlet>
-          <Route exact path="/welcome">
-            <Welcome />
-          </Route>
-          <Route exact path="/login">
-            <Login />
-          </Route>
-          <Route exact path="/register">
-            <Register />
-          </Route>
-          <Route exact path="/">
-            <Redirect to="/welcome" />
-          </Route>
-        </IonRouterOutlet>
-      </IonTabs>
-    </>
-  );
-};
-
 const PrivateLayout: React.FC = () => {
   const userId = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('userId') : null;
-  const dispatch = useAppDispatch();
   useEffect(() => {
     (async () => {
       try {
-        // ensure redux has current user
-        try {
-          if (userId) {
-            const rows: any[] = await sqlite.querySql('SELECT * FROM Users WHERE id = ? LIMIT 1', [Number(userId)]);
-            if (rows && rows[0]) {
-              const u = rows[0];
-              dispatch(setUser({ id: Number(u.id), email: u.email, fullname: u.fullname ?? null, birthDate: u.birthDate ?? null, weight: u.weight ?? null }));
-            }
-          }
-        } catch (e) {}
         if (sessionStorage.getItem('userId')) {
           // request notification permissions when entering private area
           try {
@@ -152,53 +118,43 @@ const PrivateLayout: React.FC = () => {
   }, []);
 
   if (!userId) {
-    return <Redirect to="/login" />;
+    return <Redirect to="/Login" />;
   }
 
   return (
     <>
-      <IonHeader>
-        <IonToolbar color="primary">
-          <IonTitle>HabitTracker</IonTitle>
-          <AvatarButton />
-          <LogoutButton />
-        </IonToolbar>
-      </IonHeader>
+      <NotificationListener />
       <IonTabs>
         <IonRouterOutlet>
-          <Route exact path="/app/home">
+          <Route exact path="/Home">
             <Home />
           </Route>
-          <Route exact path="/app/habits">
+          <Route exact path="/Habits">
             <Habits />
           </Route>
-          <Route path="/app/progress">
+          <Route path="/Progress">
             <Progress />
           </Route>
-          <Route exact path="/app/profile">
-            <Profile />
-          </Route>
-          <Route exact path="/app">
-            <Redirect to="/app/home" />
+          <Route exact path="/">
+            <Redirect to="/Home" />
           </Route>
         </IonRouterOutlet>
 
         <IonTabBar slot="bottom">
-          <IonTabButton tab="Home" href="/app/home">
+          <IonTabButton tab="Home" href="/Home">
             <IonIcon aria-hidden="true" icon={triangle} />
             <IonLabel>Home</IonLabel>
           </IonTabButton>
-          <IonTabButton tab="Habits" href="/app/habits">
+          <IonTabButton tab="Habits" href="/Habits">
             <IonIcon aria-hidden="true" icon={ellipse} />
             <IonLabel>Habits</IonLabel>
           </IonTabButton>
-          <IonTabButton tab="Progress" href="/app/progress">
+          <IonTabButton tab="Progress" href="/Progress">
             <IonIcon aria-hidden="true" icon={square} />
             <IonLabel>Progress</IonLabel>
           </IonTabButton>
         </IonTabBar>
       </IonTabs>
-      <NotificationListener />
     </>
   );
 };

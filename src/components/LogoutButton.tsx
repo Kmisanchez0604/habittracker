@@ -12,7 +12,7 @@ const LogoutButton: React.FC = () => {
       sessionStorage.removeItem('userId');
     } catch {}
     try { notificationService.stop(); } catch {}
-    history.replace('/login');
+    history.replace('/Login');
   };
 
   return (
