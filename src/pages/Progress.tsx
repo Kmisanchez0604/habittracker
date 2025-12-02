@@ -12,6 +12,7 @@ import {
 } from 'chart.js';
 import { useGetAllHabitsQuery } from '../store/habitsApi';
 import LogoutButton from '../components/LogoutButton';
+import AvatarButton from '../components/AvatarButton';
 
 ChartJS.register(
   BarElement, 
@@ -185,6 +186,7 @@ const Progress: React.FC = () => {
       <IonHeader>
         <IonToolbar>
           <IonTitle>Progreso y Estadísticas</IonTitle>
+          <AvatarButton />
           <LogoutButton />
         </IonToolbar>
       </IonHeader>

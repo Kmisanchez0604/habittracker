@@ -2,6 +2,8 @@ import { IonButton, IonContent, IonHeader, IonInput, IonItem, IonLabel, IonPage,
 import { useState, useEffect } from "react";
 import { useHistory } from "react-router";
 import sqlite from '../services/sqlite';
+import { useAppDispatch } from '../store/hooks';
+import { setUser } from '../store/userSlice';
 
 
 const Login: React.FC=() => {
@@ -9,6 +11,8 @@ const Login: React.FC=() => {
     const [Password,setPassword]= useState('');
     const [showToast,setShowToast]= useState(false);
     const history=useHistory();
+
+    const dispatch = useAppDispatch();
 
     const handleRegister = async () => {
         if (!Email || !Password){
@@ -19,34 +23,42 @@ const Login: React.FC=() => {
         try {
             // find user by email
             const existing = await sqlite.querySql('SELECT * FROM Users WHERE email = ?', [Email]);
-            if (existing && existing.length > 0) {
-                const user = existing[0];
-                // store session and navigate
-                sessionStorage.setItem('userId', String(user.id));
-                history.replace('/Home');
+            if (!existing || existing.length === 0) {
+                setShowToast(true);
                 return;
             }
 
-            // create new user and store session
-            await sqlite.executeSql('INSERT INTO Users (email, password) VALUES (?,?)', [Email, Password]);
-            const created = await sqlite.querySql('SELECT id FROM Users WHERE email = ? LIMIT 1', [Email]);
-            const userId = created && created[0] ? created[0].id : null;
-            if (userId) {
-                sessionStorage.setItem('userId', String(userId));
+            const user = existing[0];
+            if (user.password !== Password) {
+                setShowToast(true);
+                return;
             }
+
+            sessionStorage.setItem('userId', String(user.id));
+            // load user into store
+            dispatch(setUser({ id: Number(user.id), email: user.email, fullname: user.fullname ?? null, birthDate: user.birthDate ?? null, weight: user.weight ?? null }));
             history.replace('/Home');
         } catch (err) {
-            console.error('Failed to save user', err);
+            console.error('Failed to login user', err);
             setShowToast(true);
         }
     };
     useEffect(() => {
         // if already logged-in via session, redirect to Home
         (async () => {
-            const userId = sessionStorage.getItem('userId');
-            if (userId) {
-                history.replace('/Home');
-            }
+                const userId = sessionStorage.getItem('userId');
+                if (userId) {
+                    try {
+                        const rows = await sqlite.querySql('SELECT * FROM Users WHERE id = ? LIMIT 1', [Number(userId)]);
+                        if (rows && rows[0]) {
+                            // populate global user state
+                            dispatch(setUser({ id: Number(rows[0].id), email: rows[0].email, fullname: rows[0].fullname ?? null, birthDate: rows[0].birthDate ?? null, weight: rows[0].weight ?? null }));
+                        }
+                    } catch (e) {
+                        // ignore
+                    }
+                    history.replace('/Home');
+                }
         })();
     }, []);
 

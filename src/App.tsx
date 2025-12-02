@@ -15,6 +15,11 @@ import { Redirect, Route, Switch } from 'react-router-dom';
 import Habits from './pages/Habits';
 import Home from './pages/Home';
 import Progress from './pages/Progress';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Profile from './pages/Profile';
+import { useAppDispatch } from './store/hooks';
+import { setUser } from './store/userSlice';
 
 import '@ionic/react/css/core.css';
 import '@ionic/react/css/normalize.css';
@@ -50,7 +55,6 @@ import NotificationListener from './components/NotificationListener';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import './theme/variables.css';
 import { HabitsProvider } from './context/HabitsContext';
-import Login from './pages/Login';
 
 setupIonicReact();
 
@@ -78,9 +82,11 @@ const App: React.FC = () => {
       <HabitsProvider>
         <IonReactRouter>
           <Switch>
-            {/* Public route: Login */}
-            <Route exact path="/Login">
-              <Login />
+            <Route path="/register">
+              <PublicLayout />
+            </Route>
+            <Route path="/login">
+              <PublicLayout />
             </Route>
 
             {/* Private layout (tabs + private routes). The layout requests notification permissions
@@ -95,11 +101,65 @@ const App: React.FC = () => {
   );
 };
 
+const PublicLayout: React.FC = () => {
+  const dispatch = useAppDispatch();
+  // if there's a session user, load into store and redirect
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const sid = sessionStorage.getItem('userId');
+        if (sid) {
+          const id = Number(sid);
+          try {
+            const rows: any[] = await sqlite.querySql('SELECT * FROM Users WHERE id = ? LIMIT 1', [id]);
+            if (rows && rows[0]) {
+              const u = rows[0];
+              dispatch(setUser({ id: Number(u.id), email: u.email, fullname: u.fullname ?? null, birthDate: u.birthDate ?? null, weight: u.weight ?? null }));
+            }
+          } catch (e) {
+            console.warn('failed to load user in public layout', e);
+          }
+        }
+      } catch (err) {
+        console.warn(err);
+      }
+    })();
+  }, [dispatch]);
+  const sid = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('userId') : null;
+  if (sid) return <Redirect to="/" />;
+
+  // render routes for login/register
+  return (
+    <Switch>
+      <Route exact path="/login">
+        <Login />
+      </Route>
+      <Route exact path="/register">
+        <Register />
+      </Route>
+      <Route path="/">
+        <Redirect to="/login" />
+      </Route>
+    </Switch>
+  );
+};
+
 const PrivateLayout: React.FC = () => {
   const userId = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('userId') : null;
+  const dispatch = useAppDispatch();
   useEffect(() => {
     (async () => {
       try {
+        // ensure redux has current user
+        try {
+          if (userId) {
+            const rows: any[] = await sqlite.querySql('SELECT * FROM Users WHERE id = ? LIMIT 1', [Number(userId)]);
+            if (rows && rows[0]) {
+              const u = rows[0];
+              dispatch(setUser({ id: Number(u.id), email: u.email, fullname: u.fullname ?? null, birthDate: u.birthDate ?? null, weight: u.weight ?? null }));
+            }
+          }
+        } catch (e) {}
         if (sessionStorage.getItem('userId')) {
           // request notification permissions when entering private area
           try {
@@ -142,6 +202,9 @@ const PrivateLayout: React.FC = () => {
           </Route>
           <Route path="/Progress">
             <Progress />
+          </Route>
+          <Route exact path="/Profile">
+            <Profile />
           </Route>
           <Route exact path="/">
             <Redirect to="/Home" />

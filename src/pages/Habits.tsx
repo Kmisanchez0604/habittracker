@@ -25,6 +25,7 @@ import MonthCalendar from '../components/MonthCalendar';
 import { Category } from '../types/Categories.types';
 import { formatDate, getWeekStartDate } from '../helpers/dates';
 import LogoutButton from '../components/LogoutButton';
+import AvatarButton from '../components/AvatarButton';
 
 
 
@@ -137,6 +138,7 @@ const Habits: React.FC = () => {
       <IonHeader>
         <IonToolbar>
           <IonTitle>Mis Hábitos</IonTitle>
+          <AvatarButton />
           <LogoutButton />
         </IonToolbar>
       </IonHeader>

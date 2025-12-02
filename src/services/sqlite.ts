@@ -120,6 +120,28 @@ class SqliteService {
   createdAt TEXT DEFAULT (datetime('now')),
   FOREIGN KEY (habitId) REFERENCES Habits(id)
 );`);
+            // Ensure Users table has new columns for profile data
+            try {
+                const userPragma = await this.querySql("PRAGMA table_info('Users')");
+                const userCols = (Array.isArray(userPragma) ? userPragma : []).map((r: any) => String(r.name || r.NAME || r.Name));
+                const neededUserCols: Record<string, string> = {
+                    fullname: 'TEXT',
+                    birthDate: 'TEXT',
+                    weight: 'REAL'
+                };
+                for (const [col, def] of Object.entries(neededUserCols)) {
+                    if (!userCols.includes(col)) {
+                        try {
+                            await this.executeSql(`ALTER TABLE Users ADD COLUMN ${col} ${def}`);
+                            console.info(`Added column ${col} to Users`);
+                        } catch (err) {
+                            console.warn(`Failed to add column ${col} to Users`, err);
+                        }
+                    }
+                }
+            } catch (err) {
+                console.warn('migrateSchema users columns check failed', err);
+            }
         } catch (err) {
             console.warn('migrateSchema error', err);
         }

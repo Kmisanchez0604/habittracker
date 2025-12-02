@@ -8,6 +8,8 @@ import HabitFormModal from '../components/HabitFormModal';
 import { useHabits } from '../context/HabitsContext';
 import React, { useState } from 'react';
 import LogoutButton from '../components/LogoutButton';
+import AvatarButton from '../components/AvatarButton';
+import { useAppSelector } from '../store/hooks';
 
 const CircularProgress: React.FC<{ percentage: number; size?: number }> = ({ percentage, size = 96 }) => {
   const stroke = 8;
@@ -57,6 +59,7 @@ const formatTime = (time?: string | null) => {
 
 const Home: React.FC = () => {
   const history = useHistory();
+  const user = useAppSelector(s => s.user);
 
   const userId = typeof sessionStorage !== 'undefined' ? Number(sessionStorage.getItem('userId')) || undefined : undefined;
   const { data: todaysHabits = [], refetch } = useGetTodaysHabitsQuery(userId, { refetchOnMountOrArgChange: true, refetchOnFocus: true, refetchOnReconnect: true });
@@ -74,6 +77,10 @@ const Home: React.FC = () => {
       <IonHeader>
         <IonToolbar color="primary">
           <IonTitle>HabitTracker</IonTitle>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 12 }}>
+            <h2 style={{ margin: 0 }}>{`¡Hola! ${user?.fullname ? user.fullname.split(' ')[0] : ''}`}</h2>
+          </div>
+          <AvatarButton />
           <LogoutButton />
         </IonToolbar>
       </IonHeader>
