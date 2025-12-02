@@ -1,5 +1,149 @@
+import {
+  IonButton,
+  IonContent,
+  IonIcon,
+  IonInput,
+  IonItem,
+  IonLabel,
+  IonPage,
+  IonToast
+} from '@ionic/react';
+
+import { eye, eyeOff, arrowBack } from 'ionicons/icons';
+import { useState } from 'react';
+import { useHistory } from 'react-router-dom';
+import "./Register.css";
+import { useAppDispatch } from '../store/hooks';
+import { setUser } from '../store/userSlice';
+import { useCreateUserMutation } from '../store/habitsApi';
+
+const Register: React.FC = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [fullname, setFullname] = useState('');
+  const [showToast, setShowToast] = useState({ open: false, msg: '' });
+  const [showPassword, setShowPassword] = useState(false);
+
+  const dispatch = useAppDispatch();
+  const [createUser] = useCreateUserMutation();
+
+  const history = useHistory();
+
+  const validateEmail = (email: string) => {
+    return /\S+@\S+\.\S+/.test(email);
+  };
+
+  const handleRegister = async() => {
+    if (!email || !password || !confirm) {
+      return setShowToast({ open: true, msg: 'Todos los campos son obligatorios ❤️' });
+    }
+
+    if (!validateEmail(email)) {
+      return setShowToast({ open: true, msg: 'Correo inválido 😅' });
+    }
+
+    if (password.length < 6) {
+      return setShowToast({ open: true, msg: 'La contraseña debe tener mínimo 6 caracteres 🔐' });
+    }
+
+    if (password !== confirm) {
+      return setShowToast({ open: true, msg: 'Las contraseñas no coinciden 😓' });
+    }
+
+    try {
+      if (!fullname || !fullname.trim()) {
+        setShowToast({ open: true, msg: 'Ingresa tu nombre completo' });
+        return;
+      }
+      const res = await createUser({ email, password, fullname }).unwrap();
+      if (!res) {
+        setShowToast({ open: true, msg: 'Error creando usuario' });
+        return;
+      }
+      const u = res;
+      sessionStorage.setItem('userId', String(u.id));
+      dispatch(setUser({ id: Number(u.id), email: u.email, fullname: u.fullname ?? null, birthDate: u.birthDate ?? null, weight: u.weight ?? null }));
+      history.push('/app/home');
+    } catch (err) {
+      console.error('register error', err);
+      setShowToast({ open: true, msg: 'Error creando usuario' });
+    }
+  };
+
+  return (
+    <IonPage>
+
+<IonContent className="auth-page register-container">
+
+  
+
+  <IonButton fill="clear" onClick={() => history.push('/login')} className="back-btn">
+    <IonIcon icon={arrowBack} slot="start" />
+    Volver
+  </IonButton>
+
+  <div className="form-wrapper">
+    <h1 className="register-title">Crear Cuenta</h1>
+
+    <IonItem>
+      <IonLabel position="floating">Nombre completo</IonLabel>
+      <IonInput
+        value={fullname}
+        onIonChange={(e) => setFullname(e.detail.value!)}
+      />
+    </IonItem>
+
+    <IonItem>
+      <IonLabel position="floating">Correo</IonLabel>
+      <IonInput
+        type="email"
+        value={email}
+        onIonChange={(e) => setEmail(e.detail.value!)}
+      />
+    </IonItem>
+
+    <IonItem>
+      <IonLabel position="floating">Contraseña</IonLabel>
+      <IonInput
+        type={showPassword ? 'text' : 'password'}
+        value={password}
+        onIonChange={(e) => setPassword(e.detail.value!)}
+      />
+      <IonIcon
+        icon={showPassword ? eyeOff : eye}
+        slot="end"
+        onClick={() => setShowPassword(!showPassword)}
+      />
+    </IonItem>
+
+    <IonItem>
+      <IonLabel position="floating">Confirmar contraseña</IonLabel>
+      <IonInput
+        type={showPassword ? 'text' : 'password'}
+        value={confirm}
+        onIonChange={(e) => setConfirm(e.detail.value!)}
+      />
+    </IonItem>
+
+    <IonButton expand="block" onClick={handleRegister} className="register-btn">
+      Registrarme
+    </IonButton>
+
+  </div>
+
+</IonContent>
+
+  <IonToast isOpen={showToast.open} message={showToast.msg} duration={2000} onDidDismiss={() => setShowToast({ open: false, msg: '' })} />
+
+    </IonPage>
+  );
+};
+
+export default Register;
+/* 
+import { IonDatetime, IonList } from '@ionic/react';
 import React, { useState } from 'react';
-import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonItem, IonLabel, IonInput, IonButton, IonToast, IonList, IonDatetime } from '@ionic/react';
 import { useHistory } from 'react-router';
 import sqlite from '../services/sqlite';
 import { useAppDispatch } from '../store/hooks';
@@ -70,7 +214,7 @@ const Register: React.FC = () => {
       const updated = await sqlite.querySql('SELECT * FROM Users WHERE id = ? LIMIT 1', [userId]);
       const u = updated[0];
       dispatch(setUser({ id: Number(u.id), email: u.email, fullname: u.fullname ?? null, birthDate: u.birthDate ?? null, weight: u.weight ?? null }));
-      history.replace('/Home');
+      history.replace('/app/home');
     } catch (err) {
       console.error('finish profile error', err);
       setToast({ show: true, message: 'Error guardando perfil' });
@@ -130,3 +274,4 @@ const Register: React.FC = () => {
 };
 
 export default Register;
+ */

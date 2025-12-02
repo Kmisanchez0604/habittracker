@@ -1,94 +1,96 @@
-import { IonButton, IonContent, IonHeader, IonInput, IonItem, IonLabel, IonPage, IonTitle, IonToast, IonToolbar } from "@ionic/react";
-import { useState, useEffect } from "react";
-import { useHistory } from "react-router";
-import sqlite from '../services/sqlite';
+import { IonButton, IonContent, IonInput, IonPage, IonToast } from "@ionic/react";
+import React, { useState } from 'react';
+import { useHistory } from "react-router-dom";
+import "./Login.css";
+import "./Register.css"; // shared auth styles (scoped to .auth-page)
+import { useLoginUserMutation } from '../store/habitsApi';
 import { useAppDispatch } from '../store/hooks';
 import { setUser } from '../store/userSlice';
 
+const Login: React.FC = () => {
+  const history = useHistory();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [toast, setToast] = useState<{ show: boolean; message?: string }>({ show: false });
+  const dispatch = useAppDispatch();
 
-const Login: React.FC=() => {
-    const [Email,setEmail]= useState('');
-    const [Password,setPassword]= useState('');
-    const [showToast,setShowToast]= useState(false);
-    const history=useHistory();
+  const [loginUser] = useLoginUserMutation();
 
-    const dispatch = useAppDispatch();
+  const handleLogin = async () => {
+    if (!email || !password) {
+      setToast({ show: true, message: 'Completa correo y contraseña' });
+      return;
+    }
+    try {
+      const res = await loginUser({ email, password }).unwrap();
+      if (!res) {
+        setToast({ show: true, message: 'Usuario o contraseña incorrectos' });
+        return;
+      }
+      const u = res;
+      sessionStorage.setItem('userId', String(u.id));
+      dispatch(setUser({ id: Number(u.id), email: u.email, fullname: u.fullname ?? null, birthDate: u.birthDate ?? null, weight: u.weight ?? null }));
+      history.push('/app/home');
+    } catch (err) {
+      console.error('login error', err);
+      setToast({ show: true, message: 'Error al iniciar sesión' });
+    }
+  };
 
-    const handleRegister = async () => {
-        if (!Email || !Password){
-            setShowToast(true);
-            return;
-        }
+  return (
+    <IonPage>
+      
+      {/* IonContent centrado REAL */}
+      <IonContent fullscreen className="auth-page center-screen">
 
-        try {
-            // find user by email
-            const existing = await sqlite.querySql('SELECT * FROM Users WHERE email = ?', [Email]);
-            if (!existing || existing.length === 0) {
-                setShowToast(true);
-                return;
-            }
+        {/* Caja centrada */}
+        <div className="center-box">
 
-            const user = existing[0];
-            if (user.password !== Password) {
-                setShowToast(true);
-                return;
-            }
+          <h2 className="auth-title">Ingresar</h2>
 
-            sessionStorage.setItem('userId', String(user.id));
-            // load user into store
-            dispatch(setUser({ id: Number(user.id), email: user.email, fullname: user.fullname ?? null, birthDate: user.birthDate ?? null, weight: user.weight ?? null }));
-            history.replace('/Home');
-        } catch (err) {
-            console.error('Failed to login user', err);
-            setShowToast(true);
-        }
-    };
-    useEffect(() => {
-        // if already logged-in via session, redirect to Home
-        (async () => {
-                const userId = sessionStorage.getItem('userId');
-                if (userId) {
-                    try {
-                        const rows = await sqlite.querySql('SELECT * FROM Users WHERE id = ? LIMIT 1', [Number(userId)]);
-                        if (rows && rows[0]) {
-                            // populate global user state
-                            dispatch(setUser({ id: Number(rows[0].id), email: rows[0].email, fullname: rows[0].fullname ?? null, birthDate: rows[0].birthDate ?? null, weight: rows[0].weight ?? null }));
-                        }
-                    } catch (e) {
-                        // ignore
-                    }
-                    history.replace('/Home');
-                }
-        })();
-    }, []);
+          <IonInput
+            className="auth-input"
+            placeholder="Correo electrónico"
+            value={email}
+            onIonChange={(e) => setEmail(String(e.detail.value))}
+            type="email"
+            fill="outline"
+          />
 
-    return(
-        <IonPage>
-            <IonHeader>
-                <IonToolbar>
-                    <IonTitle>Registro</IonTitle>
-                </IonToolbar>
-            </IonHeader>
-            <IonContent class="ion-padding">
-                <IonItem>
-                    <IonLabel position="floating" >Correo</IonLabel>
-                    <IonInput type="email" value={Email} onIonChange={e=>setEmail(e.detail.value!)}/>
-                </IonItem>
-                <IonItem>
-                    <IonLabel position="floating" >Password</IonLabel>
-                    <IonInput type="password" value={Password} onIonChange={e=>setPassword(e.detail.value!)}/>
-                </IonItem>
-                <IonButton expand="block" onClick={handleRegister}>Login</IonButton>
-                <IonToast
-                    isOpen={showToast}
-                    onDidDismiss={()=> setShowToast(false)}
-                    message="Favor Completa Todos Los Campos"
-                    duration={2000}
-                    color="warning"
-                />   
-            </IonContent>
-        </IonPage>
+          <IonInput
+            className="auth-input"
+            placeholder="Contraseña"
+            value={password}
+            onIonChange={(e) => setPassword(String(e.detail.value))}
+            type="password"
+            fill="outline"
+          />
 
-    );
+          <IonButton
+            expand="block"
+            className="auth-button"
+            onClick={handleLogin}
+          >
+            Entrar
+          </IonButton>
+
+          <IonToast isOpen={toast.show} message={toast.message} duration={2000} onDidDismiss={() => setToast({ show: false })} />
+
+          <p className="auth-link">
+            ¿No tienes cuenta?{' '}
+            <IonButton 
+              className="auth-link-action"
+              href="/register"
+            >
+              Registrarse
+            </IonButton>
+          </p>
+
+        </div>
+      </IonContent>
+
+    </IonPage>
+  );
 };
+
 export default Login;

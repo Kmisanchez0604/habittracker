@@ -1,6 +1,5 @@
+import { IonAvatar, IonButton, IonButtons } from '@ionic/react';
 import React from 'react';
-import { IonButton, IonAvatar, IonIcon, IonButtons } from '@ionic/react';
-import { personCircle } from 'ionicons/icons';
 import { useHistory } from 'react-router';
 import { useAppSelector } from '../store/hooks';
 
@@ -11,7 +10,7 @@ const AvatarButton: React.FC = () => {
 
   return (
     <IonButtons slot="end">
-      <IonButton fill="clear" onClick={() => history.push('/Profile')}>
+      <IonButton fill="clear" onClick={() => history.push('/app/profile')}>
         <IonAvatar style={{ width: 32, height: 32, background: '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>
           {initials}
         </IonAvatar>

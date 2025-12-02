@@ -16,18 +16,18 @@ import {
 } from '@ionic/react';
 import { add, calendar, create, trash } from 'ionicons/icons';
 import React, { useMemo, useState } from 'react';
-import IconRenderer from '../components/IconRenderer';
-import HabitFormModal from '../components/HabitFormModal';
-import { useHabits } from '../context/HabitsContext';
-import { useGetAllCategoriesQuery, useGetAllHabitsQuery } from '../store/habitsApi';
-import { Habit, HabitCompletion } from '../types/Habits.types';
-import MonthCalendar from '../components/MonthCalendar';
-import { Category } from '../types/Categories.types';
-import { formatDate, getWeekStartDate } from '../helpers/dates';
-import LogoutButton from '../components/LogoutButton';
 import AvatarButton from '../components/AvatarButton';
+import HabitFormModal from '../components/HabitFormModal';
+import IconRenderer from '../components/IconRenderer';
+import LogoutButton from '../components/LogoutButton';
+import MonthCalendar from '../components/MonthCalendar';
+import { useHabits } from '../context/HabitsContext';
+import { formatDate, getWeekStartDate } from '../helpers/dates';
+import { useGetAllCategoriesQuery, useGetAllHabitsQuery } from '../store/habitsApi';
+import { Category } from '../types/Categories.types';
+import { Habit, HabitCompletion } from '../types/Habits.types';
 
-
+//prueba 
 
 const Habits: React.FC = () => {
   const { updateHabitCompletion, deleteHabit } = useHabits();

@@ -1,0 +1,82 @@
+/* Fondo con opacidad estilo iOS */
+.welcome-container {
+  background-image: url('../assets/Background.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+
+  position: relative;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;   /* CENTRAR VERTICAL */
+  align-items: center;       /* CENTRAR HORIZONTAL */
+  height: 100%;
+  text-align: center;
+  padding: 20px;
+  min-height: 100vh;
+}
+
+/* Capa oscura encima del background */
+.welcome-container::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55); /* 🔥 AJUSTA LA OPACIDAD AQUÍ */
+  backdrop-filter: blur(6px);     /* Blur estilo iOS */
+  z-index: 0;
+}
+
+/* Imagen centrada y suavizada */
+.welcome-image {
+  width: 230px;
+  max-width: 70%;
+  margin-bottom: 25px;
+  z-index: 1;
+}
+
+/* Título */
+.welcome-title {
+  margin-top: 25%;
+  font-size: 2.4rem;
+  font-weight: 800;
+  color: white;
+  margin-bottom: 50px;
+  z-index: 1;
+}
+
+/* Subtítulo */
+.welcome-subtitle {
+  font-size: 1.2rem;
+  color: #eaeaea;
+  margin-bottom: 20px;
+  z-index: 1;
+}
+
+/* Contenedor de botones centrado */
+.welcome-buttons {
+  margin-left: 25%;
+  width: 50%;
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+  z-index: 1;
+}
+
+/* Botón primario */
+.btn-primary {
+  --background: #007aff;
+  --border-radius: 12px;
+  font-weight: 600;
+}
+
+/* Botón secundario */
+.btn-secondary {
+  --background: rgba(255, 255, 255, 0.18);
+  --border-radius: 12px;
+  --color: white;
+  --border-color: rgba(255, 255, 255, 0.5);
+  --border-width: 1px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(10px);
+}

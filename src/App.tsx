@@ -1,99 +1,58 @@
 import {
   IonApp,
+  IonHeader,
   IonIcon,
   IonLabel,
   IonRouterOutlet,
   IonTabBar,
   IonTabButton,
   IonTabs,
+  IonTitle,
+  IonToolbar,
   setupIonicReact
 } from '@ionic/react';
-import { IonReactRouter } from '@ionic/react-router';
-import { ellipse, square, triangle } from 'ionicons/icons';
-import React, { useEffect } from 'react';
-import { Redirect, Route, Switch } from 'react-router-dom';
-import Habits from './pages/Habits';
-import Home from './pages/Home';
-import Progress from './pages/Progress';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Profile from './pages/Profile';
-import { useAppDispatch } from './store/hooks';
-import { setUser } from './store/userSlice';
-
-import '@ionic/react/css/core.css';
-import '@ionic/react/css/normalize.css';
-import '@ionic/react/css/structure.css';
-import '@ionic/react/css/typography.css';
-
-/* Optional CSS utils that can be commented out */
-import '@ionic/react/css/display.css';
-import '@ionic/react/css/flex-utils.css';
-import '@ionic/react/css/display.css';
-import '@ionic/react/css/flex-utils.css';
-import '@ionic/react/css/float-elements.css';
-import '@ionic/react/css/padding.css';
-import '@ionic/react/css/text-alignment.css';
-import '@ionic/react/css/text-transformation.css';
-
-/**
- * Ionic Dark Mode
- * -----------------------------------------------------
- * For more info, please see:
- * https://ionicframework.com/docs/theming/dark-mode
- */
-
-/* import '@ionic/react/css/palettes/dark.always.css'; */
-/* import '@ionic/react/css/palettes/dark.class.css'; */
-import '@ionic/react/css/palettes/dark.system.css';
-
-/* Theme variables */
-import { SplashScreen } from '@capacitor/splash-screen';
 import sqlite from './services/sqlite';
+import './theme/variables.css';
+import Login from './pages/Login';
+import Profile from './pages/Profile';
+import { useEffect } from 'react';
+import { useAppDispatch } from './store/hooks';
+import { Redirect, Route, Switch } from 'react-router-dom';
+import Register from './pages/Register';
+import { LocalNotifications } from '@capacitor/local-notifications';
+import { setUser } from './store/userSlice';
 import notificationService from './services/notifications';
 import NotificationListener from './components/NotificationListener';
-import { LocalNotifications } from '@capacitor/local-notifications';
-import './theme/variables.css';
+import Habits from './pages/Habits';
+import Progress from './pages/Progress';
+import { ellipse, square, triangle } from 'ionicons/icons';
 import { HabitsProvider } from './context/HabitsContext';
+import { IonReactRouter } from '@ionic/react-router';
+import Home from './pages/Home';
+import Welcome from './pages/Welcome';
+import AvatarButton from './components/AvatarButton';
+import LogoutButton from './components/LogoutButton';
 
 setupIonicReact();
 
 const App: React.FC = () => {
-
-  useEffect(() => {
-    (async () => {
-      try {
-        await sqlite.init();
-        try {
-          await SplashScreen.hide();
-        } catch (e) {
-          // ignore
-        }
-      } catch (err) {
-        console.warn('SQLite init failed', err);
-        // Per requirement: do not hide the splash until initialization finishes correctly.
-        // This intentionally leaves the native splash visible on native platforms.
-      }
-    })();
-  }, []);
-
+  // SQLite initialization is now started automatically by the sqlite service
+  // when the module is imported; App no longer needs to call `sqlite.init()` here.
   return (
     <IonApp>
       <HabitsProvider>
         <IonReactRouter>
           <Switch>
-            <Route path="/register">
-              <PublicLayout />
+            {/* Private routes mounted under /app - check this first so it doesn't get shadowed by `/` */}
+            <Route path="/app">
+              <PrivateLayout />
             </Route>
-            <Route path="/login">
+
+            {/* Public routes mounted under / (login/register) */}
+            <Route path="/">
               <PublicLayout />
             </Route>
 
-            {/* Private layout (tabs + private routes). The layout requests notification permissions
-                and starts the notification service when mounted. */}
-            <Route path="/">
-              <PrivateLayout />
-            </Route>
           </Switch>
         </IonReactRouter>
       </HabitsProvider>
@@ -104,7 +63,7 @@ const App: React.FC = () => {
 const PublicLayout: React.FC = () => {
   const dispatch = useAppDispatch();
   // if there's a session user, load into store and redirect
-  React.useEffect(() => {
+  useEffect(() => {
     (async () => {
       try {
         const sid = sessionStorage.getItem('userId');
@@ -126,21 +85,28 @@ const PublicLayout: React.FC = () => {
     })();
   }, [dispatch]);
   const sid = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('userId') : null;
-  if (sid) return <Redirect to="/" />;
+  if (sid) return <Redirect to="/app/home" />;
 
-  // render routes for login/register
+  // render routes for welcome/login/register wrapped with a public header and bottom nav
   return (
-    <Switch>
-      <Route exact path="/login">
-        <Login />
-      </Route>
-      <Route exact path="/register">
-        <Register />
-      </Route>
-      <Route path="/">
-        <Redirect to="/login" />
-      </Route>
-    </Switch>
+    <>
+      <IonTabs>
+        <IonRouterOutlet>
+          <Route exact path="/welcome">
+            <Welcome />
+          </Route>
+          <Route exact path="/login">
+            <Login />
+          </Route>
+          <Route exact path="/register">
+            <Register />
+          </Route>
+          <Route exact path="/">
+            <Redirect to="/welcome" />
+          </Route>
+        </IonRouterOutlet>
+      </IonTabs>
+    </>
   );
 };
 
@@ -186,46 +152,53 @@ const PrivateLayout: React.FC = () => {
   }, []);
 
   if (!userId) {
-    return <Redirect to="/Login" />;
+    return <Redirect to="/login" />;
   }
 
   return (
     <>
-      <NotificationListener />
+      <IonHeader>
+        <IonToolbar color="primary">
+          <IonTitle>HabitTracker</IonTitle>
+          <AvatarButton />
+          <LogoutButton />
+        </IonToolbar>
+      </IonHeader>
       <IonTabs>
         <IonRouterOutlet>
-          <Route exact path="/Home">
+          <Route exact path="/app/home">
             <Home />
           </Route>
-          <Route exact path="/Habits">
+          <Route exact path="/app/habits">
             <Habits />
           </Route>
-          <Route path="/Progress">
+          <Route path="/app/progress">
             <Progress />
           </Route>
-          <Route exact path="/Profile">
+          <Route exact path="/app/profile">
             <Profile />
           </Route>
-          <Route exact path="/">
-            <Redirect to="/Home" />
+          <Route exact path="/app">
+            <Redirect to="/app/home" />
           </Route>
         </IonRouterOutlet>
 
         <IonTabBar slot="bottom">
-          <IonTabButton tab="Home" href="/Home">
+          <IonTabButton tab="Home" href="/app/home">
             <IonIcon aria-hidden="true" icon={triangle} />
             <IonLabel>Home</IonLabel>
           </IonTabButton>
-          <IonTabButton tab="Habits" href="/Habits">
+          <IonTabButton tab="Habits" href="/app/habits">
             <IonIcon aria-hidden="true" icon={ellipse} />
             <IonLabel>Habits</IonLabel>
           </IonTabButton>
-          <IonTabButton tab="Progress" href="/Progress">
+          <IonTabButton tab="Progress" href="/app/progress">
             <IonIcon aria-hidden="true" icon={square} />
             <IonLabel>Progress</IonLabel>
           </IonTabButton>
         </IonTabBar>
       </IonTabs>
+      <NotificationListener />
     </>
   );
 };

@@ -1,4 +1,4 @@
-import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonButton, IonList, IonItem, IonLabel, IonText, IonCard, IonCardContent, IonFab, IonFabButton, IonCheckbox, IonIcon, IonItemDivider, useIonViewWillEnter } from '@ionic/react';
+import { IonPage, IonContent, IonButton, IonList, IonItem, IonLabel, IonText, IonCard, IonCardContent, IonFab, IonFabButton, IonCheckbox, IonIcon, IonItemDivider, useIonViewWillEnter } from '@ionic/react';
 import { add } from 'ionicons/icons';
 import { useHistory } from 'react-router';
 import IconRenderer from '../components/IconRenderer';
@@ -7,8 +7,7 @@ import { Habit } from '../types/Habits.types';
 import HabitFormModal from '../components/HabitFormModal';
 import { useHabits } from '../context/HabitsContext';
 import React, { useState } from 'react';
-import LogoutButton from '../components/LogoutButton';
-import AvatarButton from '../components/AvatarButton';
+// header moved to shared PrivateLayout in App.tsx
 import { useAppSelector } from '../store/hooks';
 
 const CircularProgress: React.FC<{ percentage: number; size?: number }> = ({ percentage, size = 96 }) => {
@@ -74,16 +73,7 @@ const Home: React.FC = () => {
 
   return (
     <IonPage>
-      <IonHeader>
-        <IonToolbar color="primary">
-          <IonTitle>HabitTracker</IonTitle>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 12 }}>
-            <h2 style={{ margin: 0 }}>{`¡Hola! ${user?.fullname ? user.fullname.split(' ')[0] : ''}`}</h2>
-          </div>
-          <AvatarButton />
-          <LogoutButton />
-        </IonToolbar>
-      </IonHeader>
+      {/* Header is provided by the PrivateLayout */}
 
       <IonContent className="ion-padding">
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -96,9 +86,9 @@ const Home: React.FC = () => {
           </div>
 
           <div style={{ flex: 1 }}>
-            <h2 style={{ margin: 0 }}>¡Hola!</h2>
+            <h2 style={{ margin: 0 }}>{`¡Hola! ${user?.fullname ? user.fullname.split(' ')[0] : ''}`}</h2>
             <p style={{ marginTop: 6, marginBottom: 6 }}>Estas son tus tareas pendientes de hoy, ¡Complétalas!</p>
-            <IonButton size="small" onClick={() => history.push('/habits')}>Ver más hábitos</IonButton>
+            <IonButton size="small" onClick={() => history.push('/app/habits')}>Ver más hábitos</IonButton>
           </div>
         </div>
 
