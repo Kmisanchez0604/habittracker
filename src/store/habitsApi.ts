@@ -27,6 +27,11 @@ export const habitsApi = createApi({
       {
         async queryFn({ name, categoryId, time, description, frequency, createdAt }): Promise<QueryReturnValue<Habit, Omit<Habit, "id" | "completions"> | unknown, object | undefined>> {
           try {
+            const sid = sessionStorage.getItem('userId');
+            const userId = sid ? Number(sid) : null;
+            if (!userId) {
+              return { error: new Error('No session userId') } as any;
+            }
             // get category icon if available
             let icon: string | null = null;
             if (categoryId) {
@@ -35,9 +40,9 @@ export const habitsApi = createApi({
             }
 
             if (createdAt) {
-              await sqlite.executeSql('INSERT INTO Habits (name, description, frequency, categoryId, time, icon, isDone, createdBy, createdAt) VALUES (?,?,?,?,?,?,?,?,?)', [name, description ?? null, frequency ?? 'daily', categoryId ?? null, time ?? null, icon, 0, 1, createdAt]);
+              await sqlite.executeSql('INSERT INTO Habits (name, description, frequency, categoryId, time, icon, isDone, createdBy, createdAt) VALUES (?,?,?,?,?,?,?,?,?)', [name, description ?? null, frequency ?? 'daily', categoryId ?? null, time ?? null, icon, 0, userId, createdAt]);
             } else {
-              await sqlite.executeSql('INSERT INTO Habits (name, description, frequency, categoryId, time, icon, isDone, createdBy) VALUES (?,?,?,?,?,?,?,?)', [name, description ?? null, frequency ?? 'daily', categoryId ?? null, time ?? null, icon, 0, 1]);
+              await sqlite.executeSql('INSERT INTO Habits (name, description, frequency, categoryId, time, icon, isDone, createdBy) VALUES (?,?,?,?,?,?,?,?)', [name, description ?? null, frequency ?? 'daily', categoryId ?? null, time ?? null, icon, 0, userId]);
             }
             const rows : Habit[] = await sqlite.querySql('SELECT * FROM Habits ORDER BY id DESC LIMIT 1');
             return { data: rows?.[0] ?? null };
@@ -87,12 +92,21 @@ export const habitsApi = createApi({
     ),
 
     // optionally pass a date string (YYYY-MM-DD) to filter habits created on that date
-    getAllHabits: builder.query<Habit[], string | void>({
-      async queryFn(createdDate?: string): Promise<QueryReturnValue<Habit[], unknown, object | undefined>> {
+    getAllHabits: builder.query<Habit[], { createdDate?: string; userId?: number } | void>({
+      async queryFn(arg?: { createdDate?: string; userId?: number }): Promise<QueryReturnValue<Habit[], unknown, object | undefined>> {
         try {
+          const sid = sessionStorage.getItem('userId');
+          const sessionUserId = sid ? Number(sid) : null;
+          const userId = (arg && arg.userId) || sessionUserId;
+          if (!userId) return { data: [] } as any;
           // Get habits (optionally filter by creation date)
-          const where = createdDate ? `WHERE createdAt LIKE '${createdDate}%'` : '';
-          const habits: Habit[] = await sqlite.querySql(`SELECT * FROM Habits ${where} ORDER BY createdAt DESC`);
+          const createdDate = arg?.createdDate;
+          let habits: Habit[] = [];
+          if (createdDate) {
+            habits = await sqlite.querySql(`SELECT * FROM Habits WHERE createdBy = ? AND createdAt LIKE ? ORDER BY createdAt DESC`, [userId, `${createdDate}%`]);
+          } else {
+            habits = await sqlite.querySql(`SELECT * FROM Habits WHERE createdBy = ? ORDER BY createdAt DESC`, [userId]);
+          }
 
           // fetch completions for these habits
           const ids = habits.map(h => h.id).filter(Boolean);
@@ -126,15 +140,19 @@ export const habitsApi = createApi({
     }),
 
     // Habits created today and still pending, ordered by time (null times go last)
-    getTodaysHabits: builder.query<Habit[], void>({
-      async queryFn(): Promise<QueryReturnValue<Habit[], unknown, object | undefined>> {
+    getTodaysHabits: builder.query<Habit[], number | void>({
+      async queryFn(arg?: number): Promise<QueryReturnValue<Habit[], unknown, object | undefined>> {
         try {
+          const sid = sessionStorage.getItem('userId');
+          const sessionUserId = sid ? Number(sid) : null;
+          const userId = arg ?? sessionUserId;
+          if (!userId) return { data: [] } as any;
           const now = new Date();
           const pad = (n: number) => (n < 10 ? '0' + n : '' + n);
           const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 
           // select habits created today and not yet done, order by time (non-null first)
-          const habits: Habit[] = await sqlite.querySql(`SELECT * FROM Habits WHERE createdAt LIKE '${today}%' AND isDone = 0 ORDER BY (time IS NULL), time ASC`);
+          const habits: Habit[] = await sqlite.querySql(`SELECT * FROM Habits WHERE createdBy = ? AND createdAt LIKE ? AND isDone = 0 ORDER BY (time IS NULL), time ASC`, [userId, `${today}%`]);
 
           // attach completions for these habits
           const ids = habits.map(h => h.id).filter(Boolean);
@@ -167,14 +185,18 @@ export const habitsApi = createApi({
     }),
 
     // Today's summary: total habits created today and how many are completed (based on HabitCompletions for today's date)
-    getTodayProgress: builder.query<{ percentage: number; total: number; completed: number }, void>({
-      async queryFn(): Promise<QueryReturnValue<{ percentage: number; total: number; completed: number }, unknown, object | undefined>> {
+    getTodayProgress: builder.query<{ percentage: number; total: number; completed: number }, number | void>({
+      async queryFn(arg?: number): Promise<QueryReturnValue<{ percentage: number; total: number; completed: number }, unknown, object | undefined>> {
         try {
+          const sid = sessionStorage.getItem('userId');
+          const sessionUserId = sid ? Number(sid) : null;
+          const userId = arg ?? sessionUserId;
+          if (!userId) return { data: { percentage: 0, total: 0, completed: 0 } } as any;
           const now = new Date();
           const pad = (n: number) => (n < 10 ? '0' + n : '' + n);
           const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 
-          const todaysHabits: Habit[] = await sqlite.querySql(`SELECT * FROM Habits WHERE createdAt LIKE '${today}%'`);
+          const todaysHabits: Habit[] = await sqlite.querySql(`SELECT * FROM Habits WHERE createdBy = ? AND createdAt LIKE ?`, [userId, `${today}%`]);
           const total = todaysHabits.length;
           let completed = 0;
           if (total > 0) {
@@ -197,8 +219,11 @@ export const habitsApi = createApi({
     deleteHabit: builder.mutation<void, { id: number }>({
       async queryFn({ id }): Promise<QueryReturnValue<void, unknown, object | undefined>> {
         try {
+          const sid = sessionStorage.getItem('userId');
+          const userId = sid ? Number(sid) : null;
+          if (!userId) return { data: undefined } as any;
           await sqlite.executeSql('DELETE FROM HabitCompletions WHERE habitId = ?', [id]);
-          await sqlite.executeSql('DELETE FROM Habits WHERE id = ?', [id]);
+          await sqlite.executeSql('DELETE FROM Habits WHERE id = ? AND createdBy = ?', [id, userId]);
           return { data: undefined };
         } catch (error) {
           return { error: error as unknown };
@@ -236,7 +261,10 @@ export const habitsApi = createApi({
     getProgress: builder.query<{ percentage: number; today: Habit[] }, void>({
       async queryFn(): Promise<QueryReturnValue<{ percentage: number; today: Habit[] }, unknown, object | undefined>> {
         try {
-          const all = (await sqlite.querySql('SELECT * FROM Habits')) as Habit[];
+          const sid = sessionStorage.getItem('userId');
+          const userId = sid ? Number(sid) : null;
+          if (!userId) return { data: { percentage: 0, today: [] } } as any;
+          const all = (await sqlite.querySql('SELECT * FROM Habits WHERE createdBy = ?', [userId])) as Habit[];
 
           // compute today's date prefix (YYYY-MM-DD)
           const now = new Date();

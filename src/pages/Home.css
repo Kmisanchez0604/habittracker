@@ -1,0 +1,122 @@
+
+.home-container {
+  --background: none !important;
+  background-image: url('../assets/Background.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  position: relative;
+}
+
+/* Capa de blur oscura */
+.home-container::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+  z-index: 0;
+}
+
+/* Asegura que el contenido esté encima */
+.home-container > * {
+  z-index: 1;
+}
+
+
+/* ================================
+   HEADER ESTILO IOS
+================================ */
+.home-header {
+  --background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.home-title {
+  color: white;
+  font-weight: 800;
+  font-size: 1.6rem;
+}
+
+
+/* ================================
+   TEXTO Y TITULOS
+================================ */
+.home-h2 {
+  color: white;
+  font-size: 1.7rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.home-p {
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 6px;
+  font-size: 0.95rem;
+}
+
+
+/* ================================
+   TARJETA ESTILO GLASS
+================================ */
+.home-card {
+  --background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
+  border-radius: 16px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25);
+}
+
+/* Titulos dentro del card */
+.card-title {
+  color: white;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+
+/* ================================
+   LISTAS
+================================ */
+ion-item {
+  --background: rgba(255, 255, 255, 0.1);
+  --border-radius: 12px;
+  margin-bottom: 8px;
+  backdrop-filter: blur(6px);
+}
+
+ion-item-divider {
+  --background: transparent;
+  border: none;
+}
+
+
+/* ================================
+   CIRCULAR PROGRESS TEXT
+================================ */
+.progress-text-main {
+  color: white;
+  font-weight: 700;
+}
+
+.progress-text-sub {
+  color: rgb(255, 255, 255);
+  font-size: 0.78rem;
+}
+
+
+/* ================================
+   BOTÓN VER MÁS HÁBITOS
+================================ */
+.home-small-btn {
+  --background: #0054ae;
+  --border-radius: 12px;
+  font-weight: 600;
+  height: 36px;
+}
+
+
+.home-fab {
+  --background: #003976;
+  box-shadow: 0 6px 20px rgba(0, 122, 255, 0.45);
+}

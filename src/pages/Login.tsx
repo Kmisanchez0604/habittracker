@@ -1,52 +1,69 @@
-import { IonPage,IonHeader,IonToolbar,IonTitle,IonContent,IonInput,IonButton,IonItem,IonLabel,IonToast } from "@ionic/react";
-import { warning } from "framer-motion";
-import { User } from "lucide-react";
-import { useState } from "react";
-import { useHistory } from "react-router";
+import React, { useState } from 'react';
+import { IonPage, IonInput, IonButton, IonContent } from '@ionic/react';
+import { useHistory } from 'react-router-dom';
+import "./Login.css";
 
+const Login: React.FC = () => {
+  const history = useHistory();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
-const Login: React.FC=() => {
-    const [Email,setEmail]= useState('');
-    const [Password,setPassword]= useState('');
-    const [showToast,setShowToast]= useState(false);
-    const history=useHistory();
+  const handleLogin = () => {
+    history.push('/home');
+  };
 
-    const handleRegister =()=> {
-        if (!Email || !Password){
-            setShowToast(true);
-            return;
-        }
-    const user ={Email,Password};
-    localStorage.setItem('user',JSON.stringify(user));
-    history.push('/Home');
-    };
-    return(
-        <IonPage>
-            <IonHeader>
-                <IonToolbar>
-                    <IonTitle>Registro</IonTitle>
-                </IonToolbar>
-            </IonHeader>
-            <IonContent class="ion-padding">
-                <IonItem>
-                    <IonLabel position="floating" >Correo</IonLabel>
-                    <IonInput type="email" value={Email} onIonChange={e=>setEmail(e.detail.value!)}/>
-                </IonItem>
-                <IonItem>
-                    <IonLabel position="floating" >Password</IonLabel>
-                    <IonInput type="password" value={Password} onIonChange={e=>setPassword(e.detail.value!)}/>
-                </IonItem>
-                <IonButton expand="block" onClick={handleRegister}>Login</IonButton>
-                <IonToast
-                    isOpen={showToast}
-                    onDidDismiss={()=> setShowToast(false)}
-                    message="Favor Completa Todos Los Campos"
-                    duration={2000}
-                    color="warning"
-                />   
-            </IonContent>
-        </IonPage>
+  return (
+    <IonPage>
+      
+      {/* IonContent centrado REAL */}
+      <IonContent fullscreen className="center-screen">
 
-    );
+        {/* Caja centrada */}
+        <div className="center-box">
+
+          <h2 className="auth-title">Ingresar</h2>
+
+          <IonInput
+            className="auth-input"
+            placeholder="Correo electrónico"
+            value={email}
+            onIonChange={(e) => setEmail(String(e.detail.value))}
+            type="email"
+            fill="outline"
+          />
+
+          <IonInput
+            className="auth-input"
+            placeholder="Contraseña"
+            value={password}
+            onIonChange={(e) => setPassword(String(e.detail.value))}
+            type="password"
+            fill="outline"
+          />
+
+          <IonButton
+            expand="block"
+            className="auth-button"
+            onClick={handleLogin}
+          >
+            Entrar
+          </IonButton>
+
+          <p className="auth-link">
+            ¿No tienes cuenta?{' '}
+            <span 
+              className="auth-link-action"
+              onClick={() => history.push('/register')}
+            >
+              Registrarse
+            </span>
+          </p>
+
+        </div>
+      </IonContent>
+
+    </IonPage>
+  );
 };
+
 export default Login;

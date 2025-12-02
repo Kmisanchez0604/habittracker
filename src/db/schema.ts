@@ -1,4 +1,11 @@
 export const SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS Users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    createdAt TEXT DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS Categories (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
