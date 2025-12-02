@@ -1,0 +1,122 @@
+
+.habits-content {
+  --background: none !important;
+  background-image: url('../assets/Background.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  position: relative;
+}
+
+.habits-content::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(6px);
+  z-index: 0;
+}
+
+.habits-content > * {
+  z-index: 1;
+}
+
+.glass-card {
+  background: rgba(255,255,255,0.15);
+  backdrop-filter: blur(12px);
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.25);
+}
+
+
+.glass-item {
+  --background: rgba(255,255,255,0.1);
+  backdrop-filter: blur(8px);
+  border-radius: 12px;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.date-text {
+  font-size: 14px;
+  color: #ffffff;
+  margin-top: 8px;
+}
+
+.no-habits-text {
+  text-align: center;
+  color: #ffffff;
+  margin-top: 10px;
+}
+
+.btn-create {
+  width: 100%;
+  margin: 12px 0;
+  --background: #0159b7;
+  --border-radius: 14px;
+}
+
+.btn-today {
+  margin-top: 10px;
+}
+
+.habit-item {
+  margin-bottom: 6px;
+}
+
+.habit-info {
+  flex: 1;
+}
+
+.habit-title {
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: white;
+}
+
+.habit-title.completed {
+  text-decoration: line-through;
+  color: #ffffff;
+}
+
+.habit-description {
+  margin: 4px 0;
+  font-size: 13px;
+  color: #ffffff;
+}
+
+.habit-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.habit-frequency {
+  font-size: 12px;
+  color: #7ab8ff;
+  font-weight: 600;
+}
+
+.habit-time {
+  font-size: 12px;
+  font-weight: 500;
+  margin-left: 4px;
+  color: #ffffff;
+}
+
+.badge-progress {
+  margin-left: 8px;
+  font-size: 12px;
+}
+
+.badge-small {
+  font-size: 10px;
+  padding: 4px 6px;
+}

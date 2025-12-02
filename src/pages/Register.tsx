@@ -50,7 +50,7 @@ const Register: React.FC = () => {
     const user = { email, password };
     localStorage.setItem('user', JSON.stringify(user));
 
-    history.push('/Home');
+    history.push('/Login');
   };
 
   return (

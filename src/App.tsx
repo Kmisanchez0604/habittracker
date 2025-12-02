@@ -13,6 +13,7 @@ import { IonReactRouter } from '@ionic/react-router';
 import { ellipse, square, triangle } from 'ionicons/icons';
 import React, { useEffect } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
+import Login from './pages/Login';
 import Habits from './pages/Habits';
 import Home from './pages/Home';
 import Progress from './pages/Progress';
@@ -42,8 +43,8 @@ import notificationService from './services/notifications';
 import NotificationListener from './components/NotificationListener';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import './theme/variables.css';
-import { HabitsProvider } from './context/HabitsContext';
-import Login from './pages/Login';
+
+
 
 setupIonicReact();
 

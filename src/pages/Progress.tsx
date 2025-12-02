@@ -1,5 +1,17 @@
-import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonCard, IonCardContent, IonCardHeader, IonCardTitle } from '@ionic/react';
+import { 
+  IonPage, 
+  IonHeader, 
+  IonToolbar, 
+  IonTitle, 
+  IonContent, 
+  IonCard, 
+  IonCardContent, 
+  IonCardHeader, 
+  IonCardTitle 
+} from '@ionic/react';
+
 import { Bar, Doughnut } from 'react-chartjs-2';
+
 import { 
   Chart as ChartJS, 
   BarElement, 
@@ -10,13 +22,15 @@ import {
   Legend,
   Title 
 } from 'chart.js';
+
 import { useGetAllHabitsQuery } from '../store/habitsApi';
 import LogoutButton from '../components/LogoutButton';
+import "./Progress.css";
 
 ChartJS.register(
   BarElement, 
   CategoryScale, 
-  LinearScale,
+  LinearScale, 
   ArcElement,
   Tooltip,
   Legend,
@@ -24,88 +38,94 @@ ChartJS.register(
 );
 
 const Progress: React.FC = () => {
-  const userId = typeof sessionStorage !== 'undefined' ? Number(sessionStorage.getItem('userId')) || undefined : undefined;
+  const userId = typeof sessionStorage !== 'undefined'
+    ? Number(sessionStorage.getItem('userId')) || undefined
+    : undefined;
+
   const { data: habits = [] } = useGetAllHabitsQuery({ userId });
 
-  // Calcular progreso semanal
+  // ===============================
+  //  PROGRESO SEMANAL
+  // ===============================
   const getWeeklyProgressData = () => {
     const today = new Date();
     const weekStart = new Date(today);
-    weekStart.setDate(today.getDate() - today.getDay()); // Domingo
-    
+    weekStart.setDate(today.getDate() - today.getDay());
+
     const weekDays = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-    const weekDates = [];
-    const completionRates = [];
+    const labels: string[] = [];
+    const completionRates: number[] = [];
 
     for (let i = 0; i < 7; i++) {
       const date = new Date(weekStart);
       date.setDate(weekStart.getDate() + i);
+
       const dateString = date.toISOString().split('T')[0];
-      
-      weekDates.push(weekDays[date.getDay()]);
-      
-      // Calcular porcentaje de completados para este día
-      let completedCount = 0;
+
+      labels.push(weekDays[date.getDay()]);
+
+      let done = 0;
       habits.forEach((habit: any) => {
-        const completion = habit.completions.find((comp: any) => comp.date === dateString);
-        if (completion && completion.completed) {
-          completedCount++;
-        }
+        const comp = habit.completions.find((c: any) => c.date === dateString);
+        if (comp?.completed) done++;
       });
-      
-      const completionRate = habits.length > 0 ? (completedCount / habits.length) * 100 : 0;
-      completionRates.push(Math.round(completionRate));
+
+      const pct = habits.length > 0 ? (done / habits.length) * 100 : 0;
+      completionRates.push(Math.round(pct));
     }
 
-    return { labels: weekDates, data: completionRates };
+    return { labels, data: completionRates };
   };
 
-  // Calcular progreso por hábito
+  // ===============================
+  // PROGRESO POR HÁBITO
+  // ===============================
   const getHabitProgressData = () => {
-    const habitNames = habits.map((habit: any) => habit.name);
-    const completionCounts = habits.map((habit: any) => {
-      // Contar completados de los últimos 7 días
+    const labels = habits.map((h: any) => h.name);
+
+    const completedCounts = habits.map((h: any) => {
       const today = new Date();
       const weekAgo = new Date();
       weekAgo.setDate(today.getDate() - 7);
-      
-      let completed = 0;
-      habit.completions.forEach((comp: any) => {
+
+      let count = 0;
+      h.completions.forEach((comp: any) => {
         const compDate = new Date(comp.date);
         if (comp.completed && compDate >= weekAgo && compDate <= today) {
-          completed++;
+          count++;
         }
       });
-      
-      return completed;
+
+      return count;
     });
 
-    return { labels: habitNames, data: completionCounts };
+    return { labels, data: completedCounts };
   };
 
-  // Calcular distribución de frecuencia
+  // ===============================
+  // DISTRIBUCIÓN DIARIO / SEMANAL
+  // ===============================
   const getFrequencyDistribution = () => {
-    const dailyCount = habits.filter((habit: any) => habit.frequency === 'daily').length;
-    const weeklyCount = habits.filter((habit: any) => habit.frequency === 'weekly').length;
-    
+    const daily = habits.filter((h: any) => h.frequency === 'daily').length;
+    const weekly = habits.filter((h: any) => h.frequency === 'weekly').length;
+
     return {
       labels: ['Diarios', 'Semanales'],
-      data: [dailyCount, weeklyCount],
+      data: [daily, weekly],
       colors: ['#36A2EB', '#FF6384']
     };
   };
 
   const weeklyData = getWeeklyProgressData();
   const habitData = getHabitProgressData();
-  const frequencyData = getFrequencyDistribution();
+  const freqData = getFrequencyDistribution();
 
-  // Gráfico de progreso semanal
   const weeklyChartData = {
     labels: weeklyData.labels,
     datasets: [
-      { 
-        label: '% de Completados', 
-        data: weeklyData.data, 
+      {
+        label: '% de Completados',
+        data: weeklyData.data,
         backgroundColor: 'rgba(54, 162, 235, 0.6)',
         borderColor: 'rgba(54, 162, 235, 1)',
         borderWidth: 1
@@ -113,13 +133,12 @@ const Progress: React.FC = () => {
     ],
   };
 
-  // Gráfico de hábitos más completados
   const habitChartData = {
     labels: habitData.labels,
     datasets: [
-      { 
-        label: 'Completados (últimos 7 días)', 
-        data: habitData.data, 
+      {
+        label: 'Completados (Últimos 7 días)',
+        data: habitData.data,
         backgroundColor: 'rgba(75, 192, 192, 0.6)',
         borderColor: 'rgba(75, 192, 192, 1)',
         borderWidth: 1
@@ -127,58 +146,43 @@ const Progress: React.FC = () => {
     ],
   };
 
-  // Gráfico de distribución de frecuencia
   const frequencyChartData = {
-    labels: frequencyData.labels,
+    labels: freqData.labels,
     datasets: [
       {
         label: 'Distribución de Hábitos',
-        data: frequencyData.data,
-        backgroundColor: frequencyData.colors,
-        borderColor: frequencyData.colors.map(color => color.replace('0.6', '1')),
+        data: freqData.data,
+        backgroundColor: freqData.colors,
+        borderColor: freqData.colors.map(c => c),
         borderWidth: 1,
       },
     ],
   };
 
-  const chartOptions = {
+  const weeklyOptions = {
     responsive: true,
     plugins: {
-      legend: {
-        position: 'top' as const,
-      },
-      title: {
-        display: true,
-        text: 'Progreso Semanal',
-      },
+      legend: { position: 'top' as const },
+      title: { display: true, text: 'Progreso Semanal' },
     },
     scales: {
       y: {
         beginAtZero: true,
         max: 100,
-        ticks: {
-          callback: function(value: any) {
-            return value + '%';
-          }
-        }
+        ticks: { callback: (value: any) => value + '%' }
       },
     },
   };
 
-  const habitChartOptions = {
+  const habitOptions = {
     responsive: true,
     plugins: {
-      legend: {
-        position: 'top' as const,
-      },
-      title: {
-        display: true,
-        text: 'Hábitos Más Completados',
-      },
+      legend: { position: 'top' as const },
+      title: { display: true, text: 'Hábitos más completados' },
     },
   };
 
-  const averageWeeklyCompletion = Math.round(weeklyData.data.reduce((a, b) => a + b, 0) / 7);
+  const avgWeekly = Math.round(weeklyData.data.reduce((a, b) => a + b, 0) / 7);
 
   return (
     <IonPage>
@@ -188,70 +192,87 @@ const Progress: React.FC = () => {
           <LogoutButton />
         </IonToolbar>
       </IonHeader>
-      <IonContent className="ion-padding">
+
+      <IonContent className="progress-content">
+
         {habits.length === 0 ? (
-          <IonCard>
-            <IonCardContent style={{ textAlign: 'center' }}>
+          <IonCard className="progress-card">
+            <IonCardContent className="center-text">
               <h3>No hay hábitos registrados</h3>
-              <p>Comienza creando algunos hábitos para ver tu progreso aquí.</p>
+              <p>Crea algunos hábitos para ver estadísticas aquí.</p>
             </IonCardContent>
           </IonCard>
         ) : (
           <>
-            {/* Resumen general */}
-            <IonCard>
+            {/* ========================== */}
+            {/*  RESUMEN GENERAL            */}
+            {/* ========================== */}
+            <IonCard className="progress-card">
               <IonCardHeader>
-                <IonCardTitle>Resumen General</IonCardTitle>
+                <IonCardTitle className="progress-title">Resumen General</IonCardTitle>
               </IonCardHeader>
+
               <IonCardContent>
-                <div style={{ display: 'flex', justifyContent: 'space-around', textAlign: 'center' }}>
+                <div className="summary-box">
                   <div>
-                    <h3 style={{ color: '#36A2EB', margin: 0 }}>{habits.length}</h3>
-                    <p style={{ margin: 0 }}>Total Hábitos</p>
+                    <h3 className="summary-total">{habits.length}</h3>
+                    <p>Total Hábitos</p>
                   </div>
+
                   <div>
-                    <h3 style={{ color: '#4BC0C0', margin: 0 }}>
-                      {averageWeeklyCompletion}%
-                    </h3>
-                    <p style={{ margin: 0 }}>Promedio Semanal</p>
+                    <h3 className="summary-weekly">{avgWeekly}%</h3>
+                    <p>Promedio Semanal</p>
                   </div>
+
                   <div>
-                    <h3 style={{ color: '#FF6384', margin: 0 }}>
+                    <h3 className="summary-daily">
                       {habits.filter((h: any) => h.frequency === 'daily').length}
                     </h3>
-                    <p style={{ margin: 0 }}>Hábitos Diarios</p>
+                    <p>Hábitos Diarios</p>
                   </div>
                 </div>
               </IonCardContent>
             </IonCard>
 
-            {/* Gráfico de progreso semanal */}
-            <IonCard>
+            {/* ========================== */}
+            {/*  GRAFICO SEMANAL           */}
+            {/* ========================== */}
+            <IonCard className="progress-card">
               <IonCardHeader>
-                <IonCardTitle>Progreso Semanal</IonCardTitle>
+                <IonCardTitle className="progress-title">Progreso Semanal</IonCardTitle>
               </IonCardHeader>
+
               <IonCardContent>
-                <Bar data={weeklyChartData} options={chartOptions} />
+                <div className="chart-container">
+                  <Bar data={weeklyChartData} options={weeklyOptions} />
+                </div>
               </IonCardContent>
             </IonCard>
 
-            {/* Gráfico de hábitos más completados */}
-            <IonCard>
+            {/* ========================== */}
+            {/* HABITOS MÁS COMPLETADOS   */}
+            {/* ========================== */}
+            <IonCard className="progress-card">
               <IonCardHeader>
-                <IonCardTitle>Hábitos Más Completados</IonCardTitle>
+                <IonCardTitle className="progress-title">Hábitos Más Completados</IonCardTitle>
               </IonCardHeader>
               <IonCardContent>
-                <Bar data={habitChartData} options={habitChartOptions} />
+                <div className="chart-container">
+                  <Bar data={habitChartData} options={habitOptions} />
+                </div>
               </IonCardContent>
             </IonCard>
 
-            {/* Gráfico de distribución */}
-            <IonCard>
+            {/* ========================== */}
+            {/* DISTRIBUCIÓN              */}
+            {/* ========================== */}
+            <IonCard className="progress-card">
               <IonCardHeader>
-                <IonCardTitle>Distribución de Hábitos</IonCardTitle>
+                <IonCardTitle className="progress-title">Distribución de Hábitos</IonCardTitle>
               </IonCardHeader>
+
               <IonCardContent>
-                <div style={{ height: '300px' }}>
+                <div className="chart-donut">
                   <Doughnut data={frequencyChartData} />
                 </div>
               </IonCardContent>
