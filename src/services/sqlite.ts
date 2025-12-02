@@ -1,6 +1,7 @@
 import { Capacitor } from '@capacitor/core';
 import { SCHEMA_SQL, DB_NAME } from '../db/schema';
 import { CapacitorSQLite, DBSQLiteValues, SQLiteConnection, SQLiteDBConnection } from '@capacitor-community/sqlite';
+import { SplashScreen } from '@capacitor/splash-screen';
 
 class SqliteService {
     private static _instance: SqliteService | null = null;
@@ -10,9 +11,27 @@ class SqliteService {
     private sqlite: SQLiteConnection | null = null;
 
     private constructor() { }
+    private initializingPromise: Promise<SQLiteDBConnection | null> | null = null;
+
+    // Start initialization in background so importing the service kicks off DB setup
+    // without requiring callers to call `init()` explicitly.
+    // Note: constructor cannot be async, so kick off the async init and keep
+    // a reference to the promise so other methods can await it.
+    private _startBackgroundInit() {
+        if (!this.initializingPromise || !this.connection) {
+            this.initializingPromise = this.init().then(conn => conn).catch(err => {
+                console.warn('Background sqlite init failed', err);
+                return null;
+            });
+        }
+    }
 
     static getInstance(): SqliteService {
-        if (!SqliteService._instance) SqliteService._instance = new SqliteService();
+        if (!SqliteService._instance) {
+            SqliteService._instance = new SqliteService();
+            // kick off initialization as soon as instance is created
+            SqliteService._instance._startBackgroundInit();
+        }
         return SqliteService._instance;
     }
 
@@ -53,6 +72,10 @@ class SqliteService {
      */
     async init(): Promise<SQLiteDBConnection> {
         try {
+            if(this.connection){
+                return this.connection
+            }
+            
             if (!this.sqlite) {
                 await this.initializePlugin();
             }
@@ -76,6 +99,11 @@ class SqliteService {
             await this.ensureDefaultCategories();
 
             console.info('Native SQLite initialized and schema created');
+            try {
+                await SplashScreen.hide();
+            } catch (e) {
+                // ignore
+            }
             return this.connection;
         } catch (err) {
             console.error('initSqlite error', err);
@@ -120,6 +148,28 @@ class SqliteService {
   createdAt TEXT DEFAULT (datetime('now')),
   FOREIGN KEY (habitId) REFERENCES Habits(id)
 );`);
+            // Ensure Users table has new columns for profile data
+            try {
+                const userPragma = await this.querySql("PRAGMA table_info('Users')");
+                const userCols = (Array.isArray(userPragma) ? userPragma : []).map((r: any) => String(r.name || r.NAME || r.Name));
+                const neededUserCols: Record<string, string> = {
+                    fullname: 'TEXT',
+                    birthDate: 'TEXT',
+                    weight: 'REAL',
+                };
+                for (const [col, def] of Object.entries(neededUserCols)) {
+                    if (!userCols.includes(col)) {
+                        try {
+                            await this.executeSql(`ALTER TABLE Users ADD COLUMN ${col} ${def}`);
+                            console.info(`Added column ${col} to Users`);
+                        } catch (err) {
+                            console.warn(`Failed to add column ${col} to Users`, err);
+                        }
+                    }
+                }
+            } catch (err) {
+                console.warn('migrateSchema users columns check failed', err);
+            }
         } catch (err) {
             console.warn('migrateSchema error', err);
         }
@@ -131,6 +181,12 @@ class SqliteService {
 
     /** Execute a statement (INSERT/UPDATE/DELETE or statements without returning rows). */
     async executeSql(statement: string, values: any[] = []): Promise<any> {
+        if (!this.connection) {
+            // If initialization is in progress, wait for it
+            if (this.initializingPromise) {
+                await this.initializingPromise;
+            }
+        }
         if (!this.connection) throw new Error('Native DB connection not initialized');
         try {
             // Prefer using run for parameterized statements
@@ -158,6 +214,12 @@ class SqliteService {
 
     /** Run a SELECT query and return rows as objects. */
     async querySql(statement: string, values: any[] = []): Promise<any[]> {
+        if (!this.connection) {
+            // If initialization is in progress, wait for it
+            if (this.initializingPromise) {
+                await this.initializingPromise;
+            }
+        }
         if (!this.connection) throw new Error('Native DB connection not initialized');
         try {
             // Prefer query API for selects

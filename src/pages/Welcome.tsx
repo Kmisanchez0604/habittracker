@@ -5,12 +5,14 @@ import {
 } from "@ionic/react";
 
 import "./Welcome.css";
+import { useHistory } from "react-router-dom";
 
 
 const Welcome: React.FC = () => {
+  const history = useHistory()
   return (
     <IonPage>
-      <IonContent fullscreen className="welcome-container">
+      <IonContent className="welcome-container center-screen">
 
         
         {/* Títulos */}
@@ -21,11 +23,11 @@ const Welcome: React.FC = () => {
 
         {/* Botones */}
         <div className="welcome-buttons">
-          <IonButton expand="block" className="btn-primary" routerLink="/login">
+          <IonButton expand="block" className="btn-primary" onClick={() => history.push('/login')}>
             Iniciar Sesión
           </IonButton>
 
-          <IonButton expand="block" className="btn-secondary" routerLink="/register">
+          <IonButton expand="block" className="btn-secondary" onClick={() => history.push('/register')}>
             Crear Cuenta
           </IonButton>
         </div>

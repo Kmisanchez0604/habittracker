@@ -26,6 +26,7 @@ import IconRenderer from '../components/IconRenderer';
 import HabitFormModal from '../components/HabitFormModal';
 
 import { useHabits } from '../context/HabitsContext';
+import { formatDate, getWeekStartDate } from '../helpers/dates';
 import { useGetAllCategoriesQuery, useGetAllHabitsQuery } from '../store/habitsApi';
 
 import { Habit, HabitCompletion } from '../types/Habits.types';

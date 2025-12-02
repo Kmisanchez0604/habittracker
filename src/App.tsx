@@ -1,11 +1,14 @@
 import {
   IonApp,
+  IonHeader,
   IonIcon,
   IonLabel,
   IonRouterOutlet,
   IonTabBar,
   IonTabButton,
   IonTabs,
+  IonTitle,
+  IonToolbar,
   setupIonicReact
 } from '@ionic/react';
 
@@ -14,10 +17,21 @@ import { ellipse, square, triangle } from 'ionicons/icons';
 import React, { useEffect } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import Login from './pages/Login';
-import Habits from './pages/Habits';
-import Home from './pages/Home';
-import Progress from './pages/Progress';
+import Profile from './pages/Profile';
+import { useEffect } from 'react';
+import { useAppDispatch } from './store/hooks';
+import { Redirect, Route, Switch } from 'react-router-dom';
 import Register from './pages/Register';
+import { LocalNotifications } from '@capacitor/local-notifications';
+import { setUser } from './store/userSlice';
+import notificationService from './services/notifications';
+import NotificationListener from './components/NotificationListener';
+import Habits from './pages/Habits';
+import Progress from './pages/Progress';
+import { ellipse, square, triangle } from 'ionicons/icons';
+import { HabitsProvider } from './context/HabitsContext';
+import { IonReactRouter } from '@ionic/react-router';
+import Home from './pages/Home';
 import Welcome from './pages/Welcome';
 
 import { HabitsProvider } from './context/HabitsContext';  // ✔ CORRECTO
@@ -49,48 +63,24 @@ import './theme/variables.css';
 setupIonicReact();
 
 const App: React.FC = () => {
+  // SQLite initialization is now started automatically by the sqlite service
+  // when the module is imported; App no longer needs to call `sqlite.init()` here.
   return (
-   <IonApp>
+    <IonApp>
       <HabitsProvider>
         <IonReactRouter>
-          <IonRouterOutlet>
-
-            {/* Pantalla inicial */}
-            <Route exact path="/welcome">
-              <Welcome />
+          <Switch>
+            {/* Private routes mounted under /app - check this first so it doesn't get shadowed by `/` */}
+            <Route path="/app">
+              <PrivateLayout />
             </Route>
 
-            {/* Login */}
-            <Route exact path="/login">
-              <Login />
+            {/* Public routes mounted under / (login/register) */}
+            <Route path="/">
+              <PublicLayout />
             </Route>
 
-            {/* Registro */}
-            <Route exact path="/register">
-              <Register />
-            </Route>
-
-            {/* Home */}
-            <Route exact path="/home">
-              <Home />
-            </Route>
-
-            {/* Habits */}
-            <Route exact path="/habits">
-              <Habits />
-            </Route>
-
-            {/* Progress */}
-            <Route exact path="/progress">
-              <Progress />
-            </Route>
-
-            {/* Redirección por defecto */}
-            <Route exact path="/">
-              <Redirect to="/welcome" />
-            </Route>
-
-          </IonRouterOutlet>
+          </Switch>
         </IonReactRouter>
       </HabitsProvider>
     </IonApp>

@@ -8,9 +8,64 @@ const dummyBaseQuery = (async (): Promise<any> => ({ data: null })) as BaseQuery
 
 export const habitsApi = createApi({
   reducerPath: 'habitsApi',
-  tagTypes: ['Habits', 'Categories'],
+  tagTypes: ['Habits', 'Categories', 'Users'],
   baseQuery: dummyBaseQuery,
   endpoints: (builder) => ({
+    // --- Users endpoints ---
+    getUser: builder.query<any, number | void>({
+      async queryFn(id?: number): Promise<QueryReturnValue<any, unknown, object | undefined>> {
+        try {
+          if (!id) return { data: null };
+          // ensure sqlite initialized (safe to call multiple times)
+          const rows: any[] = await sqlite.querySql('SELECT * FROM Users WHERE id = ? LIMIT 1', [id]);
+          return { data: rows && rows[0] ? rows[0] : null };
+        } catch (error) {
+          return { error: error as unknown };
+        }
+      },
+      providesTags: (result, error, id) => (id ? [{ type: 'Users', id }] : ['Users'])
+    }),
+
+    createUser: builder.mutation<any, { email: string; password: string; fullname: string }>({
+      async queryFn({ email, password, fullname }): Promise<QueryReturnValue<any, unknown, object | undefined>> {
+        try {
+          await sqlite.executeSql('INSERT INTO Users (email, password, fullname) VALUES (?,?,?)', [email, password, fullname]);
+          const rows = await sqlite.querySql('SELECT * FROM Users WHERE email = ? LIMIT 1', [email]);
+          return { data: rows && rows[0] ? rows[0] : null };
+        } catch (error) {
+          return { error: error as unknown };
+        }
+      },
+      invalidatesTags: ['Users']
+    }),
+
+    loginUser: builder.mutation<any, { email: string; password: string }>({
+      async queryFn({ email, password }): Promise<QueryReturnValue<any, unknown, object | undefined>> {
+        try {
+          const rows = await sqlite.querySql('SELECT * FROM Users WHERE email = ? LIMIT 1', [email]);
+          if (!rows || rows.length === 0) return { data: null };
+          const u = rows[0];
+          if (String(u.password) !== String(password)) return { data: null };
+          return { data: u };
+        } catch (error) {
+          return { error: error as unknown };
+        }
+      }
+    }),
+
+    updateUser: builder.mutation<any, { id: number; fullname?: string | null; birthDate?: string | null; weight?: number | null; age?: number | null }>({
+      async queryFn({ id, fullname, birthDate, weight, age }): Promise<QueryReturnValue<any, unknown, object | undefined>> {
+        try {
+          await sqlite.executeSql('UPDATE Users SET fullname = ?, birthDate = ?, weight = ?, age = ? WHERE id = ?', [fullname ?? null, birthDate ?? null, weight ?? null, age ?? null, id]);
+          const rows = await sqlite.querySql('SELECT * FROM Users WHERE id = ? LIMIT 1', [id]);
+          return { data: rows && rows[0] ? rows[0] : null };
+        } catch (error) {
+          return { error: error as unknown };
+        }
+      },
+      invalidatesTags: (result, error, { id }) => [{ type: 'Users', id }]
+    }),
+
     getAllCategories: builder.query<Category[], void>({
         async queryFn(): Promise<QueryReturnValue<Category[], unknown, object | undefined>> {
           try {
@@ -301,4 +356,8 @@ export const {
   useDeleteHabitMutation,
   useAddCompletionMutation,
   useRemoveCompletionMutation,
+  useGetUserQuery,
+  useCreateUserMutation,
+  useLoginUserMutation,
+  useUpdateUserMutation,
 } = habitsApi;

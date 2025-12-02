@@ -1,22 +1,47 @@
+import { IonButton, IonContent, IonInput, IonPage, IonToast } from "@ionic/react";
 import React, { useState } from 'react';
-import { IonPage, IonInput, IonButton, IonContent } from '@ionic/react';
-import { useHistory } from 'react-router-dom';
+import { useHistory } from "react-router-dom";
 import "./Login.css";
+import "./Register.css"; // shared auth styles (scoped to .auth-page)
+import { useLoginUserMutation } from '../store/habitsApi';
+import { useAppDispatch } from '../store/hooks';
+import { setUser } from '../store/userSlice';
 
 const Login: React.FC = () => {
   const history = useHistory();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [toast, setToast] = useState<{ show: boolean; message?: string }>({ show: false });
+  const dispatch = useAppDispatch();
 
-  const handleLogin = () => {
-    history.push('/home');
+  const [loginUser] = useLoginUserMutation();
+
+  const handleLogin = async () => {
+    if (!email || !password) {
+      setToast({ show: true, message: 'Completa correo y contraseña' });
+      return;
+    }
+    try {
+      const res = await loginUser({ email, password }).unwrap();
+      if (!res) {
+        setToast({ show: true, message: 'Usuario o contraseña incorrectos' });
+        return;
+      }
+      const u = res;
+      sessionStorage.setItem('userId', String(u.id));
+      dispatch(setUser({ id: Number(u.id), email: u.email, fullname: u.fullname ?? null, birthDate: u.birthDate ?? null, weight: u.weight ?? null }));
+      history.push('/app/home');
+    } catch (err) {
+      console.error('login error', err);
+      setToast({ show: true, message: 'Error al iniciar sesión' });
+    }
   };
 
   return (
     <IonPage>
       
       {/* IonContent centrado REAL */}
-      <IonContent fullscreen className="center-screen">
+      <IonContent fullscreen className="auth-page center-screen">
 
         {/* Caja centrada */}
         <div className="center-box">
@@ -49,14 +74,16 @@ const Login: React.FC = () => {
             Entrar
           </IonButton>
 
+          <IonToast isOpen={toast.show} message={toast.message} duration={2000} onDidDismiss={() => setToast({ show: false })} />
+
           <p className="auth-link">
             ¿No tienes cuenta?{' '}
-            <span 
+            <IonButton 
               className="auth-link-action"
-              onClick={() => history.push('/register')}
+              href="/register"
             >
               Registrarse
-            </span>
+            </IonButton>
           </p>
 
         </div>

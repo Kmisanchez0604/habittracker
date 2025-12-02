@@ -1,5 +1,6 @@
 
-.register-container {
+/* Scoped auth styles: apply only when the root has `auth-page` class */
+.auth-page.register-container {
   --background: none !important;
   background-image: url('../assets/Background.png');
   background-size: cover;
@@ -11,7 +12,7 @@
   padding: 20px;
 }
 
-.register-container::before {
+.auth-page.register-container::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -20,10 +21,12 @@
   z-index: 0;
 }
 
-.register-container > * {
+.auth-page.register-container > * {
   z-index: 1;
 }
-h1 {
+
+.auth-page h1,
+.auth-page .register-title {
   text-align: center;       
   width: 100%;              
   margin-top: 40px;         
@@ -33,7 +36,7 @@ h1 {
   z-index: 1;
 }
 
-.form-wrapper {
+.auth-page .form-wrapper {
   width: 100%;
   max-width: 380px;
   margin: 0 auto;
@@ -43,7 +46,7 @@ h1 {
   gap: 20px;
 }
 
-ion-item {
+.auth-page ion-item {
   --padding-start: 14px;
   --inner-padding-end: 14px;
   --min-height: 70px;
@@ -56,31 +59,31 @@ ion-item {
   box-shadow: 0 3px 12px rgba(0,0,0,0.25);
 }
 
-ion-label {
+.auth-page ion-label {
   margin-bottom: 10px;
-  color: rgba(255, 255, 255, 0.85) !important;
+  color: rgba(255, 255, 255, 0.95) !important;
   font-size: 12px !important;
   font-weight:500;
 
 }
 
-ion-input {
+.auth-page ion-input {
   color: white !important;
   font-size: 16px !important;
   font-weight: 600 !important;
   padding-top: 20px !important;
 }
 
-ion-item .item-inner {
+.auth-page ion-item .item-inner {
   padding-top: 10px !important;
 }
-ion-icon {
+.auth-page ion-icon {
   color: white !important;
 }
-input::placeholder {
+.auth-page input::placeholder {
   color: rgba(255, 255, 255, 0.4);
 }
-.register-btn {
+.auth-page .register-btn {
   width: 100%;
   height: 48px;
   --background: #007aff;
